@@ -1,6 +1,6 @@
 # WinUI-3-twikit
 
-**English summary:** A WinUI 3 desktop client for X (Twitter), backed by a local FastAPI server and [twikit](https://github.com/yukari-557fd8/twikit) (fork; required). Requires Windows 10+, .NET 8 SDK, Python 3.10+, and Visual Studio 2022 with the WinUI workload. Quick start: `git clone` → `pip install -r requirements.txt` → copy `data/cookies.example.json` to `data/cookies.json` and fill in your cookies.
+**English summary:** A WinUI 3 desktop client for X (Twitter), backed by a local FastAPI server and [twikit](https://github.com/yukari-557fd8/twikit) (fork; required). Requires Windows 10+, .NET 8 SDK, Python 3.10–3.12 (recommended), and Visual Studio 2022 or later with the WinUI workload. Quick start: `git clone` → `pip install -r requirements.txt` → copy `data/cookies.example.json` to `data/cookies.json` and fill in your cookies.
 
 ---
 
@@ -51,11 +51,31 @@ flowchart LR
 | 項目 | 内容 |
 |---|---|
 | OS | Windows 10 バージョン 1809 以降 |
-| .NET | .NET 8 SDK |
-| IDE | Visual Studio 2022 +「Windows アプリ開発」ワークロード（WinUI 3） |
-| Python | 3.10 以上推奨 |
+| .NET | **.NET 8 SDK**（必須。プロジェクトは `net8.0` をターゲット） |
+| IDE | **Visual Studio 2022 以降** +「Windows アプリ開発」ワークロード（WinUI 3） |
+| Python | **3.10 〜 3.12 推奨**（twikit フォークは 3.8 以上に対応） |
 | Python パッケージ | [requirements.txt](requirements.txt) 参照（twikit は [yukari-557fd8/twikit](https://github.com/yukari-557fd8/twikit) から取得） |
 | PATH | `uvicorn` コマンドが使えること |
+
+### 動作確認環境（開発時）
+
+| 項目 | バージョン |
+|---|---|
+| Visual Studio | 2026 |
+| Python | 3.12 |
+| .NET SDK | 8 以降 |
+
+### 環境差について
+
+Visual Studio や Python の**マイナーバージョンが開発環境と異なっても**、上記の必要条件が揃っていれば動作する想定です。失敗の多くはバージョン差ではなく、次の不足が原因です。
+
+- .NET 8 SDK が未インストール
+- WinUI 3 ワークロードが未インストール
+- `pip install -r requirements.txt` 未実行、または PyPI 版 twikit を入れてしまった
+- `uvicorn` が PATH にない
+- `data/cookies.json` が未作成、またはトークン期限切れ
+
+> **補足:** Python 3.13 は動作する可能性がありますが、依存ライブラリの互換性が未検証のため推奨対象外です。
 
 ## リポジトリ構成
 
@@ -118,7 +138,7 @@ copy data\cookies.example.json data\cookies.json
 
 ### 方法 A: Visual Studio（推奨）
 
-1. [frontend/App2.slnx](frontend/App2.slnx) を Visual Studio 2022 で開く
+1. [frontend/App2.slnx](frontend/App2.slnx) を Visual Studio 2022 以降で開く
 2. スタートアッププロジェクトを **App2 (Package)** に設定
 3. プラットフォーム **x64**、構成 **Debug** で実行
 
@@ -147,11 +167,13 @@ uvicorn api:app --host 127.0.0.1 --port 8000
 
 | 症状 | 原因 | 対処 |
 |---|---|---|
+| ビルドエラー（WinUI / SDK 関連） | .NET 8 SDK または WinUI ワークロード未導入 | [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) をインストールし、VS インストーラーで「Windows アプリ開発」を追加 |
 | `backend/api.py not found` | リポジトリ外から exe を直接起動している | clone したリポジトリ内で VS / dotnet からビルド・実行する |
 | `Cookiesファイルが見つかりません` | `data/cookies.json` が未作成 | `cookies.example.json` をコピーして値を入力する |
-| `API Server: Failed to Start` | uvicorn が未インストール、または PATH 未設定 | `pip install uvicorn[standard]` を実行し、ターミナルを再起動する |
+| `API Server: Failed to Start` | uvicorn が未インストール、または PATH 未設定 | `pip install -r requirements.txt` を実行し、ターミナルを再起動する |
 | `API Server: Already Running` | ポート 8000 が既に使用中 | 既存プロセスを終了するか、そのまま利用する |
 | タイムラインが空 / エラー | トークンの期限切れ | ブラウザから cookie を再取得し、設定画面で更新する |
+| `pip install` で twikit が失敗 | Git からの取得失敗、または PyPI 版を使用 | `pip install -r requirements.txt` でフォークを指定してインストールする |
 
 ## セキュリティ
 
@@ -165,6 +187,8 @@ uvicorn api:app --host 127.0.0.1 --port 8000
 
 ## 開発メモ
 
+- 開発環境: Visual Studio 2026 + Python 3.12 + .NET 8 SDK で動作確認済み
 - twikit は必ず [https://github.com/yukari-557fd8/twikit](https://github.com/yukari-557fd8/twikit) を使用する（`requirements.txt` に Git URL で固定済み）
 - cookie ファイルのパスは環境変数 `COOKIES_FILE` で変更できます（デフォルト: `data/cookies.json`）
 - Python バックエンドの作業ディレクトリは `backend/` です。手動で uvicorn を起動する場合も `backend/` から実行してください
+- フロントエンドは Windows App SDK 2.2 / .NET 8 を使用（[frontend/App2/App2.csproj](frontend/App2/App2.csproj)）
