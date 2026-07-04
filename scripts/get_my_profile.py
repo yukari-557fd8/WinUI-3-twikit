@@ -6,7 +6,7 @@ async def get_own_profile():
     await login()  # 中央集中ログインを使用
 
     try:
-        user = await client.get_user_by_screen_name("yukari_557fd8")
+        user = await client.user()
 
         created_str = "不明"
         try:

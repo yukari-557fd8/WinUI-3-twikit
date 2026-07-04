@@ -1,3 +1,10 @@
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT / "backend"))
+
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, UploadFile, File, Form
@@ -11,7 +18,7 @@ import get_my_profile as gmp
 import get_notifications_twikit as gnt
 import get_search_twikit as gst
 
-import sys
+from paths import STATIC_DIR
 
 # 安全な文字化け対策
 try:
@@ -143,4 +150,4 @@ async def root():
 
 @app.get("/favicon.ico")
 async def favicon():
-    return FileResponse("static/favicon.ico")
+    return FileResponse(STATIC_DIR / "favicon.ico")

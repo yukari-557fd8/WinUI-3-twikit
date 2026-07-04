@@ -1,25 +1,8 @@
-from twikit_client import client
+from twikit_client import client, login
 from datetime import timezone, timedelta
 from typing import List, Dict
-import os
-import json
 
 last_cursor = None
-
-
-async def login_if_needed(cookies_file: str = "x.com.cookies_yukari_557fd8.json"):
-    if not os.path.exists(cookies_file):
-        print("Cookiesファイルが見つかりません")
-        return False
-    try:
-        with open(cookies_file, "r", encoding="utf-8") as f:
-            cookies = json.load(f)
-        client.set_cookies(cookies)
-        print("Cookiesセット完了")
-        return True
-    except Exception as e:
-        print(f"Cookiesセット失敗: {e}")
-        return False
 
 
 async def get_timeline_tweets(
@@ -29,7 +12,7 @@ async def get_timeline_tweets(
     cursor: str | None = None,
 ) -> List[Dict]:
     global last_cursor
-    await login_if_needed()
+    await login()
 
     results: List[Dict] = []
     current_cursor = cursor or None

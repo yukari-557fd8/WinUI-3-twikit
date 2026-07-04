@@ -14,11 +14,6 @@ namespace App2
     public class ServerManager
     {
         private static Process? _pythonProcess;
-        private static readonly string ApiPyAbsolutePath =
-            Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                @"visual_studio\test_app_with_menu\App2\api.py"
-            );
         private const string Host = "127.0.0.1";
         private const int Port = 8000;
 
@@ -34,8 +29,12 @@ namespace App2
 
             try
             {
-                string workingDir = Path.GetDirectoryName(ApiPyAbsolutePath) ??
-                                  Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "";
+                string? workingDir = RepositoryPaths.TryGetBackendDirectory();
+                if (workingDir == null || !File.Exists(Path.Combine(workingDir, "api.py")))
+                {
+                    UpdateStatus(statusTextBlock, "API Server: backend/api.py not found ❌", Colors.Red);
+                    return;
+                }
 
                 _pythonProcess = new Process
                 {

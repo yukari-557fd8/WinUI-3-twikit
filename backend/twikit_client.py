@@ -1,11 +1,14 @@
 from twikit import Client
 import os
 
+from paths import get_cookies_file
+
 client = Client("ja-JP")
 
 
-async def login(cookies_file: str = "x.com.cookies_yukari_557fd8.json"):
+async def login(cookies_file: str | None = None):
     """中央集中ログイン関数"""
+    cookies_file = cookies_file or get_cookies_file()
     if not os.path.exists(cookies_file):
         print("Cookiesファイルが見つかりません")
         return False

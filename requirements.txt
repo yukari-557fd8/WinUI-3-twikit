@@ -1,0 +1,4 @@
+twikit
+fastapi
+uvicorn[standard]
+python-multipart

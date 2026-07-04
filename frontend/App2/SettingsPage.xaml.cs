@@ -8,8 +8,7 @@ namespace App2
 {
     public sealed partial class SettingsPage : Page
     {
-        private readonly string jsonPath =
-            @"C:\Users\user\Documents\visual_studio\test_app_with_menu\App2\x.com.cookies_yukari_557fd8.json";
+        private readonly string? jsonPath = RepositoryPaths.TryGetCookiesFilePath();
 
         public SettingsPage()
         {
@@ -20,9 +19,9 @@ namespace App2
 
         private void LoadJsonValues()
         {
-            if (!File.Exists(jsonPath))
+            if (string.IsNullOrEmpty(jsonPath) || !File.Exists(jsonPath))
             {
-                return; // ファイルが無ければ何もしない
+                return;
             }
 
             var json = File.ReadAllText(jsonPath);
@@ -30,7 +29,6 @@ namespace App2
 
             if (dict == null) return;
 
-            // TextBox に初期値をセット
             if (dict.TryGetValue("auth_token", out var auth))
             {
                 TextBoxA.Text = auth;
@@ -44,7 +42,17 @@ namespace App2
 
         private void OnApplyClick(object sender, RoutedEventArgs e)
         {
-            // 保存処理（前回のコードと同じ）
+            if (string.IsNullOrEmpty(jsonPath))
+            {
+                return;
+            }
+
+            var dataDir = Path.GetDirectoryName(jsonPath);
+            if (!string.IsNullOrEmpty(dataDir))
+            {
+                Directory.CreateDirectory(dataDir);
+            }
+
             var dict = new Dictionary<string, string>
             {
                 ["auth_token"] = TextBoxA.Text,

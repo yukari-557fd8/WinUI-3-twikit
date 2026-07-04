@@ -185,8 +185,8 @@ namespace App2
             {
                 Id = newTweetId,
                 Text = replyText,
-                UserName = "八雲ゆかり",                    // あなたの名前
-                UserScreenName = "@yukari_557fd8",         // あなたのスクリーンネーム
+                UserName = "自分",
+                UserScreenName = "",
                 CreatedAt = DateTime.Now.ToString("yyyy/MM/dd HH:mm"),
                 IsLiked = false,
                 IsRetweeted = false,
@@ -194,13 +194,7 @@ namespace App2
                 FavoriteCount = 0,
                 RetweetCount = 0
             };
-            try
-            {
-                replyVm.UserProfileImage = ImageCache.GetOrCreate(
-                    "https://pbs.twimg.com/profile_images/1938605137813282816/u5D3g9W3_400x400.jpg",
-                    96);
-            }
-            catch { }
+
 
             // 元のツイートの直後に挿入
             int index = SearchResults.IndexOf(originalVm);
