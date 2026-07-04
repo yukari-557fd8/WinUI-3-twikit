@@ -1,0 +1,23 @@
+---
+pid: 26700
+cwd: "C:\Users\user\Documents\visual_studio\test_app_with_menu\App2"
+command: "dotnet build \"C:\\Users\\user\\Documents\\visual_studio\\test_app_with_menu\\App2\\App2\\App2\\App2.csproj\" -c Debug -p:Platform=x64 2>&1"
+started_at: 2026-07-04T02:51:34.323Z
+running_for_ms: 24630001 
+---
+  復元対象のプロジェクトを決定しています...
+  復元対象のすべてのプロジェクトは最新です。
+C:\Users\user\Documents\visual_studio\test_app_with_menu\App2\App2\App2\SearchPage.xaml(99,56): XamlCompiler warning WMC1506: OneWay bindings require at least one of their steps to support raising notifications when their value changes [C:\Users\user\Documents\visual_studio\test_app_with_menu\App2\App2\App2\App2.csproj]
+C:\Users\user\Documents\visual_studio\test_app_with_menu\App2\App2\App2\TimelinePage.xaml(141,60): XamlCompiler warning WMC1506: OneWay bindings require at least one of their steps to support raising notifications when their value changes [C:\Users\user\Documents\visual_studio\test_app_with_menu\App2\App2\App2\App2.csproj]
+C:\Users\user\Documents\visual_studio\test_app_with_menu\App2\App2\App2\TimelinePage.xaml(142,60): XamlCompiler warning WMC1506: OneWay bindings require at least one of their steps to support raising notifications when their value changes [C:\Users\user\Documents\visual_studio\test_app_with_menu\App2\App2\App2\App2.csproj]
+  App2 -> C:\Users\user\Documents\visual_studio\test_app_with_menu\App2\App2\App2\bin\x64\Debug\net8.0-windows10.0.19041.0\App2.dll
+
+ビルドに成功しました。
+
+C:\Users\user\Documents\visual_studio\test_app_with_menu\App2\App2\App2\SearchPage.xaml(99,56): XamlCompiler warning WMC1506: OneWay bindings require at least one of their steps to support raising notifications when their value changes [C:\Users\user\Documents\visual_studio\test_app_with_menu\App2\App2\App2\App2.csproj]
+C:\Users\user\Documents\visual_studio\test_app_with_menu\App2\App2\App2\TimelinePage.xaml(141,60): XamlCompiler warning WMC1506: OneWay bindings require at least one of their steps to support raising notifications when their value changes [C:\Users\user\Documents\visual_studio\test_app_with_menu\App2\App2\App2\App2.csproj]
+C:\Users\user\Documents\visual_studio\test_app_with_menu\App2\App2\App2\TimelinePage.xaml(142,60): XamlCompiler warning WMC1506: OneWay bindings require at least one of their steps to support raising notifications when their value changes [C:\Users\user\Documents\visual_studio\test_app_with_menu\App2\App2\App2\App2.csproj]
+    3 個の警告
+    0 エラー
+
+経過時間 00:00:23.64

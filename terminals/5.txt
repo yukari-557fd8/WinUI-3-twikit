@@ -1,0 +1,16 @@
+---
+pid: 83560
+cwd: "C:\Users\user\Documents\visual_studio\test_app_with_menu\App2"
+command: "dotnet build \"C:\\Users\\user\\Documents\\visual_studio\\test_app_with_menu\\App2\\App2\\App2\\App2.csproj\" -c Debug -p:Platform=x64 2>&1"
+started_at: 2026-07-04T03:47:29.223Z
+running_for_ms: 21280009 
+---
+  復元対象のプロジェクトを決定しています...
+  復元対象のすべてのプロジェクトは最新です。
+  App2 -> C:\Users\user\Documents\visual_studio\test_app_with_menu\App2\App2\App2\bin\x64\Debug\net8.0-windows10.0.19041.0\App2.dll
+
+ビルドに成功しました。
+    0 個の警告
+    0 エラー
+
+経過時間 00:00:17.81

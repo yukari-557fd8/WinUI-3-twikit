@@ -1,0 +1,26 @@
+# 改行コードの統一
+* text=auto
+
+# Windows系はCRLF
+*.cs     text eol=crlf
+*.xaml   text eol=crlf
+*.sln    text eol=crlf
+*.csproj text eol=crlf
+*.wapproj text eol=crlf
+*.appxmanifest text eol=crlf
+
+# Python系はLF
+*.py     text eol=lf
+
+# JSONはLF（Pythonで扱うため）
+*.json   text eol=lf
+
+# バイナリ扱い（差分を取らない）
+*.png    binary
+*.jpg    binary
+*.ico    binary
+*.dll    binary
+*.exe    binary
+*.pdb    binary
+*.msix   binary
+*.msixbundle binary

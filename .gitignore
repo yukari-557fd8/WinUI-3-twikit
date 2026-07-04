@@ -1,0 +1,19 @@
+# Build folders
+bin/
+obj/
+Package/bin/
+Package/obj/
+
+# Visual Studio
+.vs/
+*.user
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Cookies / private data
+data/*.json
+
+# Logs
+*.log

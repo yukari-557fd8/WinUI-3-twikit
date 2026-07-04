@@ -1,0 +1,25 @@
+<Page
+    x:Class="App2.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Padding="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <TextBlock Text="Settings"
+                   FontSize="24"
+                   Margin="0,0,0,12"/>
+        <StackPanel Grid.Row="1" Spacing="16">
+            <TextBlock Text="auth_token" FontSize="18"/>
+            <TextBox x:Name="TextBoxA"
+                     PlaceholderText="入力してください"/>
+            <TextBlock Text="ct0" FontSize="18"/>
+            <TextBox x:Name="TextBoxB"
+                     PlaceholderText="入力してください"/>
+            <Button Content="適用"
+                    HorizontalAlignment="Left"
+                    Click="OnApplyClick"/>
+        </StackPanel>
+    </Grid>
+</Page>

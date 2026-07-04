@@ -1,0 +1,82 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>App2</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <WinUISDKReferences>true</WinUISDKReferences>
+    <Nullable>enable</Nullable>
+	<AppxBundlePlatforms>x86;x64;arm64</AppxBundlePlatforms>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="TimelinePage.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="MyProfilePage.xaml" />
+    <None Remove="NotificationsPage.xaml" />
+    <None Remove="SearchPage.xaml" />
+    <None Remove="TimelinePage.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
+    <PackageReference Include="CommunityToolkit.WinUI.Notifications" Version="7.1.2" />
+  </ItemGroup>
+
+	<ItemGroup>
+		<Compile Include="TimelinePage.cs">
+			<DependentUpon>TimelinePage.xaml</DependentUpon>
+		</Compile>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Page Update="NotificationsPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Page Update="MyProfilePage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Page Update="SearchPage.xaml">
+	    <Generator></Generator>
+	  </Page>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Page Update="TweetPage.xaml">
+	    <Generator></Generator>
+	  </Page>
+	  <Page Update="MainWindow.xaml">
+	    <Generator></Generator>
+	  </Page>
+	  <Page Update="SettingsPage.xaml">
+	    <Generator></Generator>
+	  </Page>
+	  <Page Update="TimelinePage.xaml">
+	    <Generator></Generator>
+	  </Page>
+	</ItemGroup>
+
+
+    <!-- Publish Properties -->
+  <PropertyGroup>
+    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
+    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
+    <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
+    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+  </PropertyGroup>
+</Project>
