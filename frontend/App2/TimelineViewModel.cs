@@ -1,5 +1,3 @@
-﻿using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,15 +8,14 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Microsoft.UI.Dispatching;
 
 namespace App2
 {
-    public class TimelineViewModel : INotifyPropertyChanged
+    public partial class TimelineViewModel : INotifyPropertyChanged
     {
         private const int DefaultTimelineFetchCount = 30;
 
-        public ObservableCollection<TweetViewModel> Tweets { get; } = new();
+        public ObservableCollection<TweetViewModel> Tweets { get; } = [];
 
         private readonly Dictionary<string, int> _tweetCountsByType = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -42,9 +39,9 @@ namespace App2
             OnPropertyChanged(nameof(LatestTweetCount));
         }
 
-        private static readonly HashSet<string> _seenIds = new HashSet<string>();
+        private static readonly HashSet<string> _seenIds = [];
 
-        private readonly HttpClient _httpClient = new HttpClient();
+        private readonly HttpClient _httpClient = new();
 
         private readonly Dictionary<string, HashSet<string>> _seenTweetIdsByType = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, string?> _nextCursorByType = new(StringComparer.OrdinalIgnoreCase);
@@ -128,35 +125,10 @@ namespace App2
             _nextCursorByType[key] = cursor;
         }
 
-        private TweetViewModel CreateTweetViewModel(TweetDto dto)
-        {
-            var vm = new TweetViewModel
-            {
-                Id = dto.id ?? "",
-                Text = dto.text ?? "",
-                UserName = dto.user_name ?? "",
-                UserScreenName = string.IsNullOrEmpty(dto.user_screen_name) ? "" : "@" + dto.user_screen_name,
-                CreatedAt = dto.created_at ?? "",
-                RetweetCount = dto.retweet_count,
-                FavoriteCount = dto.favorite_count,
-                ReplyCount = dto.reply_count,
-                MediaItems = dto.media_items?.Select(m =>
-                {
-                    var thumbnail = m?.thumbnail ?? m?.url ?? "";
-                    return new MediaItem
-                    {
-                        Type = m?.type ?? "image",
-                        Url = m?.url ?? "",
-                        Thumbnail = thumbnail,
-                        ThumbnailImage = ImageCache.GetOrCreate(thumbnail, 640)
-                    };
-                }).ToList() ?? new List<MediaItem>()
-            };
+        private static TweetViewModel CreateTweetViewModel(TweetDto dto) => TweetViewModel.FromDto(dto);
 
-            vm.UserProfileImage = ImageCache.GetOrCreate(dto.user_profile_image, 96);
-
-            return vm;
-        }
+        private static string GetDedupKey(TweetDto dto)
+            => !string.IsNullOrWhiteSpace(dto.timeline_entry_id) ? dto.timeline_entry_id : dto.id ?? string.Empty;
 
         public async Task SwitchTimelineAsync(string newType)
         {
@@ -199,9 +171,10 @@ namespace App2
 
                     foreach (var dto in tweetList)
                     {
-                        if (string.IsNullOrEmpty(dto.id) || dto.id == "error" || seenSet.Contains(dto.id)) continue;
+                        var dedupKey = GetDedupKey(dto);
+                        if (string.IsNullOrEmpty(dedupKey) || dedupKey == "error" || seenSet.Contains(dedupKey)) continue;
 
-                        seenSet.Add(dto.id);
+                        seenSet.Add(dedupKey);
                         Tweets.Add(CreateTweetViewModel(dto));
                     }
 
@@ -226,8 +199,8 @@ namespace App2
             }
 
             var sorted = Tweets
-                .OrderByDescending(t => ParseTweetTime(t.CreatedAt))
-                .ThenByDescending(t => t.Id, StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(t => t.SortKey)
+                .ThenByDescending(t => TimeDisplayHelper.TryParse(t.CreatedAt) ?? DateTime.MinValue)
                 .ToList();
 
             if (sorted.Count <= 1)
@@ -261,13 +234,13 @@ namespace App2
             try
             {
                 var payload = JsonSerializer.Deserialize<TimelineApiResponse>(json);
-                return (payload?.tweets ?? new List<TweetDto>(), payload?.next_cursor);
+                return (payload?.tweets ?? [], payload?.next_cursor);
             }
             catch (JsonException ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Timeline payload parse failed: {ex.Message}");
                 var fallback = JsonSerializer.Deserialize<List<TweetDto>>(json);
-                return (fallback ?? new List<TweetDto>(), null);
+                return (fallback ?? [], null);
             }
         }
 
@@ -281,7 +254,7 @@ namespace App2
         {
             if (newTweets == null || newTweets.Count == 0)
             {
-                System.Diagnostics.Debug.WriteLine("⚠️ Merge: 新着0件");
+                System.Diagnostics.Debug.WriteLine("Merge: 新着0件");
                 return;
             }
 
@@ -292,7 +265,7 @@ namespace App2
 
             if (dispatcher == null)
             {
-                System.Diagnostics.Debug.WriteLine("❌ DispatcherQueue が取得できませんでした");
+                System.Diagnostics.Debug.WriteLine("DispatcherQueue が取得できませんでした");
                 return;
             }
 
@@ -305,79 +278,41 @@ namespace App2
                     var addedIds = new List<string>();
 
                     // 新着候補を新しい順に処理
-                    foreach (var newVm in newTweets.OrderByDescending(t => ParseTweetTime(t.CreatedAt)))
+                    foreach (var newVm in newTweets.OrderByDescending(t => t.SortKey))
                     {
-                        if (string.IsNullOrEmpty(newVm.Id)) continue;
-                        if (seenSet.Contains(newVm.Id) || Tweets.Any(t => t.Id == newVm.Id)) continue;
+                        if (string.IsNullOrEmpty(newVm.DedupKey)) continue;
+                        if (seenSet.Contains(newVm.DedupKey) || Tweets.Any(t => t.DedupKey == newVm.DedupKey)) continue;
 
                         Tweets.Insert(0, newVm);
-                        seenSet.Add(newVm.Id);
-                        addedIds.Add(newVm.Id);
+                        seenSet.Add(newVm.DedupKey);
+                        addedIds.Add(newVm.DedupKey);
                         added++;
                     }
 
                     if (added > 0)
                     {
                         RebuildTimelineOrder();
-                        System.Diagnostics.Debug.WriteLine($"✅ 本物新着追加: {added}件 (合計{Tweets.Count}件) | 例: {string.Join(", ", addedIds.Take(3))}");
+                        System.Diagnostics.Debug.WriteLine($"本物新着追加: {added}件 (合計{Tweets.Count}件) | 例: {string.Join(", ", addedIds.Take(3))}");
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"⚠️ Merge: 本物追加0件（すべて重複） 取得数: {newTweets.Count}");
+                        System.Diagnostics.Debug.WriteLine($"Merge: 本物追加0件（すべて重複） 取得数: {newTweets.Count}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"❌ Merge例外: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Merge例外: {ex.Message}");
                 }
             });
         }
-        private DateTime ParseTweetTime(string createdAt)
-        {
-            if (string.IsNullOrWhiteSpace(createdAt))
-                return DateTime.MinValue;
+        public TweetViewModel? FindTweetById(string tweetId)
+            => Tweets.FirstOrDefault(t => string.Equals(t.Id, tweetId, StringComparison.Ordinal));
 
-            if (DateTime.TryParse(createdAt, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeLocal, out var dt))
-                return dt;
+        public Task<bool> LikeTweetAsync(string tweetId, bool currentlyLiked)
+            => TweetActionClient.LikeAsync(_httpClient, tweetId, currentlyLiked);
 
-            if (DateTime.TryParseExact(createdAt, new[] { "yyyy/MM/dd HH:mm:ss", "yyyy/MM/dd HH:mm" },
-                System.Globalization.CultureInfo.InvariantCulture,
-                System.Globalization.DateTimeStyles.None, out dt))
-                return dt;
-
-            return DateTime.MinValue;
-        }
-
-        public async Task<bool> LikeTweetAsync(string tweetId, bool currentlyLiked)
-        {
-            try
-            {
-                string url = currentlyLiked ? $"http://localhost:8000/unlike/{tweetId}" : $"http://localhost:8000/like/{tweetId}";
-                var response = await _httpClient.PostAsync(url, null);
-                response.EnsureSuccessStatusCode();
-                return true;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Like API Error: {ex.Message}");
-                return false;
-            }
-        }
-
-        public async Task<bool> RetweetTweetAsync(string tweetId)
-        {
-            try
-            {
-                var response = await _httpClient.PostAsync($"http://localhost:8000/retweet/{tweetId}", null);
-                response.EnsureSuccessStatusCode();
-                return true;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Retweet API Error: {ex.Message}");
-                return false;
-            }
-        }
+        public Task<bool> RetweetTweetAsync(string tweetId)
+            => TweetActionClient.RetweetAsync(_httpClient, tweetId);
 
         public async Task<HttpResponseMessage> ReplyTweetAsync(string tweetId, string replyText)
         {
@@ -401,16 +336,21 @@ namespace App2
             var replyVm = new TweetViewModel
             {
                 Id = newTweetId,
+                TimelineEntryId = newTweetId,
                 Text = replyText,
-                UserName = "自分",
-                UserScreenName = "",
-                CreatedAt = DateTime.Now.ToString("yyyy/MM/dd HH:mm"),
+                UserName = "八雲ゆかり",
+                UserScreenName = "@yukari_557fd8",
+                CreatedAt = TimeDisplayHelper.FormatNowForStorage(),
                 IsLiked = false,
                 IsRetweeted = false,
                 ReplyCount = 0,
                 FavoriteCount = 0,
-                RetweetCount = 0
+                RetweetCount = 0,
+                UserProfileImage = ImageCache.GetOrCreate(
+                    "https://pbs.twimg.com/profile_images/1938605137813282816/u5D3g9W3_400x400.jpg",
+                    96)
             };
+
             int index = Tweets.IndexOf(originalVm);
             if (index >= 0)
             {
@@ -428,7 +368,7 @@ namespace App2
             var newVms = new List<TweetViewModel>();
             try
             {
-                System.Diagnostics.Debug.WriteLine($"🔍 GetNewTweetsAsync 開始 (type: {CurrentTimelineType})");
+                System.Diagnostics.Debug.WriteLine($"GetNewTweetsAsync 開始 (type: {CurrentTimelineType})");
 
                 var (tweetList, _) = await FetchTimelinePageAsync(null);
                 if (tweetList == null) return newVms;
@@ -438,14 +378,15 @@ namespace App2
 
                 foreach (var dto in tweetList)
                 {
-                    if (string.IsNullOrEmpty(dto.id) || dto.id == "error") continue;
-                    if (seenSet.Contains(dto.id) || seenInResponse.Contains(dto.id)) continue;
+                    var dedupKey = GetDedupKey(dto);
+                    if (string.IsNullOrEmpty(dedupKey) || dedupKey == "error") continue;
+                    if (seenSet.Contains(dedupKey) || seenInResponse.Contains(dedupKey)) continue;
 
-                    seenInResponse.Add(dto.id);
+                    seenInResponse.Add(dedupKey);
                     newVms.Add(CreateTweetViewModel(dto));
                 }
 
-                System.Diagnostics.Debug.WriteLine($"📥 GetNewTweetsAsync 結果: {newVms.Count}件 (API取得後)");
+                System.Diagnostics.Debug.WriteLine($"GetNewTweetsAsync 結果: {newVms.Count}件 (API取得後)");
             }
             catch (Exception ex)
             {

@@ -1,10 +1,9 @@
 using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 
 namespace App2
 {
-    public sealed class StringToBitmapImageConverter : IValueConverter
+    public sealed partial class StringToBitmapImageConverter : IValueConverter
     {
         public object? Convert(object value, Type targetType, object parameter, string language)
         {

@@ -1,10 +1,10 @@
-﻿using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using System;
 
 namespace App2
 {
-    public class LikeColorConverter : IValueConverter
+    public partial class LikeColorConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {

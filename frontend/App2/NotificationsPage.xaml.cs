@@ -1,6 +1,5 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 
 namespace App2
@@ -34,14 +33,14 @@ namespace App2
             _scrollViewer = ScrollPositionHelper.FindScrollViewer(NotificationsListView);
             if (_scrollViewer == null)
             {
-                System.Diagnostics.Debug.WriteLine("⚠️ ScrollViewer が見つかりませんでした");
+                System.Diagnostics.Debug.WriteLine("ScrollViewer が見つかりませんでした");
                 return;
             }
 
             _scrollViewer.ViewChanged -= ScrollViewer_ViewChanged;
             _scrollViewer.ViewChanged += ScrollViewer_ViewChanged;
             ScrollPositionHelper.RestoreOffset(_scrollViewer, ViewModel.ScrollVerticalOffset);
-            System.Diagnostics.Debug.WriteLine("✅ ScrollViewer ハンドラ登録完了");
+            System.Diagnostics.Debug.WriteLine("ScrollViewer ハンドラ登録完了");
         }
 
         private async void ScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
@@ -66,7 +65,7 @@ namespace App2
                 return;
             }
 
-            System.Diagnostics.Debug.WriteLine("📜 下までスクロール → 追加取得");
+            System.Diagnostics.Debug.WriteLine("下までスクロール → 追加取得");
             App.MainWindow?.ShowLoading(true);
             try
             {

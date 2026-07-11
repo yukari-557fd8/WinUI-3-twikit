@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -7,19 +7,14 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-
-using Microsoft.UI.Xaml.Media;           // MediaItem 用
-using Microsoft.UI.Xaml.Media.Imaging;   // BitmapImage 用
-
-using App2;   // TimelineViewModel 内の TweetViewModel にアクセス
 namespace App2
 {
-    public class SearchViewModel : INotifyPropertyChanged
+    public partial class SearchViewModel : INotifyPropertyChanged
     {
-        public ObservableCollection<TweetViewModel> SearchResults { get; } = new();
+        public ObservableCollection<TweetViewModel> SearchResults { get; } = [];
 
-        private readonly HttpClient _httpClient = new HttpClient();
-        private readonly HashSet<string> _seenIds = new HashSet<string>();  // ← 重複防止用
+        private readonly HttpClient _httpClient = new();
+        private readonly HashSet<string> _seenIds = [];  // ← 重複防止用
 
         private bool _isLoading = false;
         private bool _isLoadingMore = false;
@@ -99,32 +94,7 @@ namespace App2
 
                         _seenIds.Add(dto.id);   // ← 重複防止
 
-                        var vm = new TweetViewModel
-                        {
-                            Id = dto.id,
-                            Text = dto.text ?? "",
-                            UserName = dto.user_name ?? "",
-                            UserScreenName = string.IsNullOrEmpty(dto.user_screen_name) ? "" : "@" + dto.user_screen_name,
-                            CreatedAt = dto.created_at ?? "",
-                            RetweetCount = dto.retweet_count,
-                            FavoriteCount = dto.favorite_count,
-                            ReplyCount = dto.reply_count,
-                            MediaItems = dto.media_items?.Select(m =>
-                            {
-                                var thumbnail = m?.thumbnail ?? m?.url ?? "";
-                                return new MediaItem
-                                {
-                                    Type = m?.type ?? "image",
-                                    Url = m?.url ?? "",
-                                    Thumbnail = thumbnail,
-                                    ThumbnailImage = ImageCache.GetOrCreate(thumbnail, 640)
-                                };
-                            }).ToList() ?? new List<MediaItem>()
-                        };
-
-                        vm.UserProfileImage = ImageCache.GetOrCreate(dto.user_profile_image, 96);
-
-                        SearchResults.Add(vm);
+                        SearchResults.Add(TweetViewModel.FromDto(dto));
                         added++;
                     }
                     System.Diagnostics.Debug.WriteLine($"Search: {added}件追加 (重複除外済み)");
@@ -141,26 +111,14 @@ namespace App2
         }
 
         // Like / Retweet（TimelineViewModelと同じ）
-        public async Task<bool> LikeTweetAsync(string tweetId, bool currentlyLiked)
-        {
-            try
-            {
-                string url = currentlyLiked ? $"http://localhost:8000/unlike/{tweetId}" : $"http://localhost:8000/like/{tweetId}";
-                var response = await _httpClient.PostAsync(url, null);
-                return response.IsSuccessStatusCode;
-            }
-            catch { return false; }
-        }
+        public TweetViewModel? FindTweetById(string tweetId)
+            => SearchResults.FirstOrDefault(t => string.Equals(t.Id, tweetId, StringComparison.Ordinal));
 
-        public async Task<bool> RetweetTweetAsync(string tweetId)
-        {
-            try
-            {
-                var response = await _httpClient.PostAsync($"http://localhost:8000/retweet/{tweetId}", null);
-                return response.IsSuccessStatusCode;
-            }
-            catch { return false; }
-        }
+        public Task<bool> LikeTweetAsync(string tweetId, bool currentlyLiked)
+            => TweetActionClient.LikeAsync(_httpClient, tweetId, currentlyLiked);
+
+        public Task<bool> RetweetTweetAsync(string tweetId)
+            => TweetActionClient.RetweetAsync(_httpClient, tweetId);
 
         public async Task<HttpResponseMessage> ReplyTweetAsync(string tweetId, string replyText)
         {
@@ -185,16 +143,22 @@ namespace App2
             {
                 Id = newTweetId,
                 Text = replyText,
-                UserName = "自分",
-                UserScreenName = "",
-                CreatedAt = DateTime.Now.ToString("yyyy/MM/dd HH:mm"),
+                UserName = "八雲ゆかり",                    // あなたの名前
+                UserScreenName = "@yukari_557fd8",         // あなたのスクリーンネーム
+                CreatedAt = TimeDisplayHelper.FormatNowForStorage(),
                 IsLiked = false,
                 IsRetweeted = false,
                 ReplyCount = 0,
                 FavoriteCount = 0,
                 RetweetCount = 0
             };
-
+            try
+            {
+                replyVm.UserProfileImage = ImageCache.GetOrCreate(
+                    "https://pbs.twimg.com/profile_images/1938605137813282816/u5D3g9W3_400x400.jpg",
+                    96);
+            }
+            catch { }
 
             // 元のツイートの直後に挿入
             int index = SearchResults.IndexOf(originalVm);

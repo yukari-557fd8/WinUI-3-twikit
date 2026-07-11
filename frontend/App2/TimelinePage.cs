@@ -10,7 +10,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Windows.Media.Core;
-using Windows.Media.Playback;
 
 namespace App2
 {
@@ -53,46 +52,46 @@ namespace App2
             _autoUpdateTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(interval) };
             _autoUpdateTimer.Tick += async (s, args) => await PollNewTweetsAsync();
             _autoUpdateTimer.Start();
-            System.Diagnostics.Debug.WriteLine($"🚀 自動更新開始 ({interval}秒間隔)");
+            System.Diagnostics.Debug.WriteLine($"自動更新開始 ({interval}秒間隔)");
         }
 
         private void StopAutoUpdate()
         {
             _autoUpdateTimer?.Stop();
             _autoUpdateTimer = null;
-            System.Diagnostics.Debug.WriteLine("⛔ 自動更新停止");
+            System.Diagnostics.Debug.WriteLine("自動更新停止");
         }
 
         private async Task PollNewTweetsAsync()
         {
             if (ViewModel.IsLoading || ViewModel.IsLoadingMore)
             {
-                System.Diagnostics.Debug.WriteLine("⏭️ ポーリングスキップ (Loading中)");
+                System.Diagnostics.Debug.WriteLine("ポーリングスキップ (Loading中)");
                 return;
             }
 
             try
             {
-                System.Diagnostics.Debug.WriteLine($"🔍 ポーリング開始 (type: {ViewModel.CurrentTimelineType})");
+                System.Diagnostics.Debug.WriteLine($"ポーリング開始 (type: {ViewModel.CurrentTimelineType})");
 
                 var newTweets = await ViewModel.GetNewTweetsAsync();
 
-                System.Diagnostics.Debug.WriteLine($"📥 GetNewTweetsAsync 結果: {newTweets.Count}件");
+                System.Diagnostics.Debug.WriteLine($"GetNewTweetsAsync 結果: {newTweets.Count}件");
 
                 if (newTweets.Count == 0)
                 {
-                    System.Diagnostics.Debug.WriteLine("ℹ️ 新着なし");
+                    System.Diagnostics.Debug.WriteLine("新着なし");
                     return;
                 }
 
                 if (ViewModel.IsChronologicalTimeline)
                 {
-                    System.Diagnostics.Debug.WriteLine("📌 Latestモード → MergeAndSortNewTweets呼び出し");
+                    System.Diagnostics.Debug.WriteLine("Latestモード → MergeAndSortNewTweets呼び出し");
                     ViewModel.MergeAndSortNewTweets(newTweets);
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine("📌 ForYouモード → 先頭挿入");
+                    System.Diagnostics.Debug.WriteLine("ForYouモード → 先頭挿入");
                     int added = 0;
                     foreach (var vm in newTweets)
                     {
@@ -103,12 +102,12 @@ namespace App2
                         }
                     }
                     if (added > 0)
-                        System.Diagnostics.Debug.WriteLine($"✅ 先頭に {added}件追加");
+                        System.Diagnostics.Debug.WriteLine($"先頭に {added}件追加");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ ポーリング例外: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"ポーリング例外: {ex.Message}");
             }
         }        // SelectionChanged に変更
         private async void TimelineTabView_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -168,6 +167,18 @@ namespace App2
                 await ShowFullScreenImage(mediaUrl);
             }
         }
+        private void ReplyForm_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            if (!ReplyInputHelper.IsCtrlEnter(e) || sender is not DependencyObject depObj)
+            {
+                return;
+            }
+
+            if (ReplyInputHelper.TrySendReply(depObj, s => SendReply_Click(s, new RoutedEventArgs())))
+            {
+                e.Handled = true;
+            }
+        }
 
         private async Task ShowFullScreenVideo(string videoUrl)
         {
@@ -196,10 +207,9 @@ namespace App2
                 Background = new SolidColorBrush(Microsoft.UI.Colors.Black),
                 RequestedTheme = ElementTheme.Dark,
                 FullSizeDesired = true,
-                PrimaryButtonText = null
+                PrimaryButtonText = null,
+                XamlRoot = this.XamlRoot
             };
-
-            dialog.XamlRoot = this.XamlRoot;
             dialog.Resources["ContentDialogBackground"] = new SolidColorBrush(Microsoft.UI.Colors.Black);
             dialog.Resources["ContentDialogMinWidth"] = this.ActualWidth - 40;
             dialog.Resources["ContentDialogMinHeight"] = this.ActualHeight - 40;
@@ -214,7 +224,7 @@ namespace App2
         {
             var bitmap = new BitmapImage(new Uri(imageUrl))
             {
-                DecodePixelWidth = 4096,
+                DecodePixelWidth = (int)(this.ActualWidth * 0.9),
                 CreateOptions = BitmapCreateOptions.IgnoreImageCache
             };
 
@@ -236,10 +246,9 @@ namespace App2
                 Background = new SolidColorBrush(Microsoft.UI.Colors.Black),
                 RequestedTheme = ElementTheme.Dark,
                 FullSizeDesired = true,               // できるだけ大きく
-                PrimaryButtonText = null
+                PrimaryButtonText = null,
+                XamlRoot = this.XamlRoot
             };
-
-            dialog.XamlRoot = this.XamlRoot;
 
             // 背景を完全に黒く
             dialog.Resources["ContentDialogBackground"] = new SolidColorBrush(Microsoft.UI.Colors.Black);
@@ -257,19 +266,10 @@ namespace App2
         {
             if (sender is Button btn && btn.DataContext is TweetViewModel vm)
             {
-                try
-                {
-                    bool success = await ViewModel.LikeTweetAsync(vm.Id, vm.IsLiked);
-                    if (success)
-                    {
-                        vm.ToggleLike();
-                        System.Diagnostics.Debug.WriteLine($"いいね実行成功: {vm.Id}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"いいね失敗: {ex.Message}");
-                }
+                await TweetActionHandler.HandleLikeAsync(
+                    vm,
+                    ViewModel.LikeTweetAsync,
+                    ViewModel.FindTweetById);
             }
         }
 
@@ -277,19 +277,10 @@ namespace App2
         {
             if (sender is Button btn && btn.DataContext is TweetViewModel vm)
             {
-                try
-                {
-                    bool success = await ViewModel.RetweetTweetAsync(vm.Id);
-                    if (success)
-                    {
-                        vm.ToggleRetweet();
-                        System.Diagnostics.Debug.WriteLine($"リツイート実行成功: {vm.Id}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"リツイート失敗: {ex.Message}");
-                }
+                await TweetActionHandler.HandleRetweetAsync(
+                    vm,
+                    ViewModel.RetweetTweetAsync,
+                    ViewModel.FindTweetById);
             }
         }
         private void ReplyButton_Click(object sender, RoutedEventArgs e)
@@ -304,43 +295,54 @@ namespace App2
 
         private async void SendReply_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.DataContext is TweetViewModel vm)
+            if (sender is not FrameworkElement element)
+                return;
+
+            var vm = ReplyInputHelper.FindTweetViewModel(element);
+            if (vm == null || vm.IsReplySending) return;
+
+            ReplyInputHelper.SyncReplyTextFromInput(element, vm);
+            if (string.IsNullOrWhiteSpace(vm.ReplyText)) return;
+
+            vm.IsReplySending = true;
+            try
             {
-                if (string.IsNullOrWhiteSpace(vm.ReplyText)) return;
+                var response = await ViewModel.ReplyTweetAsync(vm.Id, vm.ReplyText);
 
-                try
+                if (response.IsSuccessStatusCode)
                 {
-                    var response = await ViewModel.ReplyTweetAsync(vm.Id, vm.ReplyText);
+                    var result = await response.Content.ReadFromJsonAsync<JsonElement>();
 
-                    if (response.IsSuccessStatusCode)
+                    if (result.TryGetProperty("new_tweet_id", out var newIdElement))
                     {
-                        var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                        string newTweetId = newIdElement.GetString() ?? "";
 
-                        if (result.TryGetProperty("new_tweet_id", out var newIdElement))
-                        {
-                            string newTweetId = newIdElement.GetString() ?? "";
-
-                            // 返信をツイートの直下に挿入
-                            ViewModel.AddReplyToTimeline(vm, newTweetId, vm.ReplyText);
-                        }
-
-                        // フォームを閉じる
-                        vm.IsReplying = false;
-                        vm.ReplyText = "";
-
-                        System.Diagnostics.Debug.WriteLine($"リプライ送信＆表示成功: {vm.Id}");
+                        // 返信をツイートの直下に挿入
+                        ViewModel.AddReplyToTimeline(vm, newTweetId, vm.ReplyText);
                     }
+
+                    // フォームを閉じる
+                    vm.IsReplying = false;
+                    vm.ReplyText = "";
+
+                    System.Diagnostics.Debug.WriteLine($"リプライ送信＆表示成功: {vm.Id}");
                 }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"リプライ失敗: {ex.Message}");
-                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"リプライ失敗: {ex.Message}");
+            }
+            finally
+            {
+                vm.IsReplySending = false;
             }
         }
         private void CancelReply_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button btn && btn.DataContext is TweetViewModel vm)
             {
+                if (vm.IsReplySending) return;
+
                 vm.IsReplying = false;
                 vm.ReplyText = "";
             }

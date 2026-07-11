@@ -1,10 +1,10 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using System;
 
 namespace App2
 {
-    public class BoolToVisibilityConverter : IValueConverter
+    public partial class BoolToVisibilityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
@@ -17,7 +17,7 @@ namespace App2
         }
     }
 
-    public class InverseBoolToVisibilityConverter : IValueConverter
+    public partial class InverseBoolToVisibilityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
@@ -29,8 +29,21 @@ namespace App2
             throw new NotImplementedException();
         }
     }
+
+    public partial class InverseBoolConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            return value is bool b && !b;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
     // メディアタイプ用コンバーター
-    public class MediaTypeToVisibilityConverter : IValueConverter
+    public partial class MediaTypeToVisibilityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
@@ -48,7 +61,7 @@ namespace App2
         }
     }
 
-    public class StringToMediaSourceConverter : IValueConverter
+    public partial class StringToMediaSourceConverter : IValueConverter
     {
         public object? Convert(object value, Type targetType, object parameter, string language)
         {

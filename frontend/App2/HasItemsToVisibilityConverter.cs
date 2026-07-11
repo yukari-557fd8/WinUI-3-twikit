@@ -1,11 +1,11 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
 using System;
 using System.Collections;
 
 namespace App2
 {
-    public class HasItemsToVisibilityConverter : IValueConverter
+    public partial class HasItemsToVisibilityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {

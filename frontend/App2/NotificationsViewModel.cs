@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.Collections.Generic;
@@ -11,11 +11,11 @@ using System.Threading.Tasks;
 
 namespace App2
 {
-    public class NotificationsViewModel : INotifyPropertyChanged
+    public partial class NotificationsViewModel : INotifyPropertyChanged
     {
-        public ObservableCollection<NotificationViewModel> Notifications { get; } = new();
+        public ObservableCollection<NotificationViewModel> Notifications { get; } = [];
 
-        private readonly HttpClient _httpClient = new HttpClient();
+        private readonly HttpClient _httpClient = new();
         private bool _isLoading = false;
         private bool _isLoadingMore = false;
         private bool _hasMore = true;
@@ -138,7 +138,7 @@ namespace App2
         private void SortNotificationsByTime()
         {
             var sorted = Notifications
-                .OrderByDescending(vm => ParseNotificationTime(vm.CreatedAt))
+                .OrderByDescending(vm => TimeDisplayHelper.TryParse(vm.CreatedAt) ?? DateTime.MinValue)
                 .ThenByDescending(vm => vm.Id, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -158,15 +158,6 @@ namespace App2
             }
         }
 
-        private static DateTime ParseNotificationTime(string createdAt)
-        {
-            if (DateTime.TryParse(createdAt, out var dt))
-            {
-                return dt;
-            }
-
-            return DateTime.MinValue;
-        }
     }
 
     // DTO と ViewModel（変更なし）
@@ -182,7 +173,7 @@ namespace App2
         public string? target_tweet_text { get; set; }
     }
 
-    public class NotificationViewModel : INotifyPropertyChanged
+    public partial class NotificationViewModel : INotifyPropertyChanged
     {
         public string Id { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty;
@@ -190,6 +181,7 @@ namespace App2
         public string ActorName { get; set; } = string.Empty;
         public string ActorScreenName { get; set; } = string.Empty;
         public string CreatedAt { get; set; } = string.Empty;
+        public string CreatedAtDisplay => TimeDisplayHelper.FormatDisplay(CreatedAt);
         public string TargetTweetText { get; set; } = string.Empty;
         public ImageSource? ActorProfileImage { get; set; }
 

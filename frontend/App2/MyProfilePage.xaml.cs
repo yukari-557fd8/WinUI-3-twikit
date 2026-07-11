@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System;
@@ -30,10 +30,10 @@ namespace App2
                 // Python側からプロフィール取得（あなたの連携方法に合わせて調整）
                 var profile = await GetProfileFromPythonAsync();
 
-                if (profile.ContainsKey("error"))
+                if (profile.TryGetValue("error", out object? value))
                 {
                     DisplayNameText.Text = "エラー";
-                    BioText.Text = profile["error"].ToString();
+                    BioText.Text = value.ToString();
                     return;
                 }
 
@@ -72,7 +72,7 @@ namespace App2
         }
 
         /// Python (Twikit) から自身のプロフィールを取得
-        private async Task<Dictionary<string, object>> GetProfileFromPythonAsync()
+        private static async Task<Dictionary<string, object>> GetProfileFromPythonAsync()
         {
             try
             {

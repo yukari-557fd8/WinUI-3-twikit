@@ -1,6 +1,7 @@
+from typing import Dict, List
+
+from tweet_serializer import tweet_to_dict
 from twikit_client import client, login
-from datetime import timezone, timedelta
-from typing import List, Dict
 
 last_cursor = None
 
@@ -10,7 +11,7 @@ async def get_timeline_tweets(
     count_per_page: int | None = 30,
     timeline_type: str = "for_you",
     cursor: str | None = None,
-) -> List[Dict]:
+) -> Dict:
     global last_cursor
     await login()
 
@@ -33,10 +34,8 @@ async def get_timeline_tweets(
                 request_kwargs["cursor"] = current_cursor
 
             if timeline_type == "latest":
-                # 最新タイムライン
                 timeline = await client.get_latest_timeline(**request_kwargs)
             else:
-                # おすすめ（For You）タイムライン
                 timeline = await client.get_timeline(**request_kwargs)
 
             if not timeline or len(timeline) == 0:
@@ -48,69 +47,11 @@ async def get_timeline_tweets(
             seen = set()
 
             for t in timeline:
-                try:
-                    dt = t.created_at_datetime.astimezone(timezone(timedelta(hours=9)))
-                    created_str = dt.strftime("%Y/%m/%d %H:%M:%S")
-                except:
-                    created_str = getattr(t, "created_at", "不明")
-
-                # メディア抽出 (画像 + 動画対応)
-                media_items = []
-                try:
-                    if hasattr(t, "_data"):
-                        legacy = t._data.get("legacy", {})
-                        for m in legacy.get("extended_entities", {}).get("media", []):
-                            media_type = m.get("type", "photo")
-                            if media_type == "photo":
-                                url = m.get("media_url_https") or m.get("media_url")
-                                if url:
-                                    media_items.append({"type": "image", "url": url})
-                            elif media_type in ["video", "animated_gif"]:
-                                # 動画の場合、最高品質のvariantを探す
-                                video_info = m.get("video_info", {})
-                                variants = video_info.get("variants", [])
-                                if variants:
-                                    best_variant = max(
-                                        (v for v in variants if v.get("content_type") == "video/mp4"),
-                                        key=lambda v: v.get("bitrate", 0),
-                                        default=variants[0],
-                                    )
-                                    url = best_variant.get("url")
-                                    if url:
-                                        media_items.append(
-                                            {
-                                                "type": "video",
-                                                "url": url,
-                                                "thumbnail": m.get("media_url_https") or m.get("media_url"),
-                                            }
-                                        )
-                                else:
-                                    url = m.get("media_url_https") or m.get("media_url")
-                                    if url:
-                                        media_items.append({"type": "video", "url": url})
-                except Exception as media_err:
-                    print(f"メディア抽出エラー: {media_err}")
-                    pass
-
                 if t.id in seen:
                     continue
                 seen.add(t.id)
-                results.append(
-                    {
-                        "id": t.id,
-                        "text": t.text or "",
-                        "created_at": created_str,
-                        "user_name": getattr(t.user, "name", "Unknown"),
-                        "user_screen_name": getattr(t.user, "screen_name", ""),
-                        "user_profile_image": getattr(t.user, "profile_image_url", "") or "",
-                        "favorite_count": getattr(t, "favorite_count", 0),
-                        "retweet_count": getattr(t, "retweet_count", 0),
-                        "media_items": media_items,
-                        "reply_count": getattr(t, "reply_count", 0),
-                    }
-                )
+                results.append(tweet_to_dict(t))
 
-            # cursor更新
             if hasattr(timeline, "next_cursor") and timeline.next_cursor:
                 current_cursor = timeline.next_cursor
                 last_cursor = current_cursor

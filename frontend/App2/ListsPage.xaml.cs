@@ -12,48 +12,59 @@ using Windows.Media.Core;
 
 namespace App2
 {
-    public sealed partial class SearchPage : Page
+    public sealed partial class ListsPage : Page
     {
-        public SearchViewModel ViewModel { get; }
+        public ListsViewModel ViewModel { get; }
 
-        public SearchPage()
+        public ListsPage()
         {
-            ViewModel = App.ViewModels.Search;
-            this.InitializeComponent();
-            this.Loaded += SearchPage_Loaded;
+            ViewModel = App.ViewModels.Lists;
+            InitializeComponent();
+            Loaded += ListsPage_Loaded;
         }
 
-        private void SearchPage_Loaded(object sender, RoutedEventArgs e)
+        private async void ListsPage_Loaded(object sender, RoutedEventArgs e)
         {
-            SearchBox.Focus(FocusState.Programmatic);
+            if (ViewModel.Lists.Count == 0 && !ViewModel.IsLoading)
+            {
+                await ViewModel.LoadListsAsync();
+            }
+
             AttachScrollHandler();
         }
 
-        private async void SearchButton_Click(object sender, RoutedEventArgs e)
+        private void BreadcrumbList_Click(object sender, RoutedEventArgs e)
         {
-            await PerformSearch();
+            ViewModel.BackToListCatalog();
+            AttachScrollHandler();
         }
 
-        private async void SearchBox_KeyDown(object sender, KeyRoutedEventArgs e)
+        private async void ListsListView_ItemClick(object sender, ItemClickEventArgs e)
         {
-            if (e.Key == Windows.System.VirtualKey.Enter)
-                await PerformSearch();
-        }
+            if (e.ClickedItem is not ListItemViewModel listItem)
+            {
+                return;
+            }
 
-        private async Task PerformSearch()
-        {
-            if (string.IsNullOrWhiteSpace(SearchBox.Text)) return;
-            await ViewModel.SearchAsync(SearchBox.Text.Trim());
+            await ViewModel.SelectListAsync(listItem.Id, listItem.Name);
+            AttachScrollHandler();
         }
 
         private ScrollViewer? _scrollViewer;
 
         private void AttachScrollHandler()
         {
-            if (SearchListView == null) return;
+            var targetListView = ViewModel.ShowTimeline ? TimelineListView : ListsListView;
+            if (targetListView == null)
+            {
+                return;
+            }
 
-            _scrollViewer = ScrollPositionHelper.FindScrollViewer(SearchListView);
-            if (_scrollViewer == null) return;
+            _scrollViewer = ScrollPositionHelper.FindScrollViewer(targetListView);
+            if (_scrollViewer == null)
+            {
+                return;
+            }
 
             _scrollViewer.ViewChanged -= ScrollViewer_ViewChanged;
             _scrollViewer.ViewChanged += ScrollViewer_ViewChanged;
@@ -72,12 +83,27 @@ namespace App2
                 ViewModel.ScrollVerticalOffset = sv.VerticalOffset;
             }
 
-            if (!ViewModel.IsLoadingMore &&
-                sv.VerticalOffset + sv.ViewportHeight >= sv.ExtentHeight - 200)
+            if (!ViewModel.ShowTimeline || ViewModel.IsLoading || ViewModel.IsLoadingMore)
             {
-                App.MainWindow?.ShowLoading(true);
-                await ViewModel.LoadMoreAsync();
-                App.MainWindow?.ShowLoading(false);
+                return;
+            }
+
+            if (sv.VerticalOffset + sv.ViewportHeight < sv.ExtentHeight - 150)
+            {
+                return;
+            }
+
+            App.MainWindow?.ShowLoading(true);
+            try
+            {
+                await ViewModel.LoadMoreTweetsAsync();
+            }
+            finally
+            {
+                if (!ViewModel.IsLoadingMore)
+                {
+                    App.MainWindow?.ShowLoading(false);
+                }
             }
         }
 
@@ -87,7 +113,6 @@ namespace App2
             base.OnNavigatedFrom(e);
         }
 
-        // Like / Retweet ボタン
         private async void LikeButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button btn && btn.DataContext is TweetViewModel vm)
@@ -114,46 +139,51 @@ namespace App2
         {
             if (sender is Button btn && btn.DataContext is TweetViewModel vm)
             {
-                vm.IsReplying = !vm.IsReplying;   // トグル
+                vm.IsReplying = !vm.IsReplying;
                 if (vm.IsReplying)
-                    vm.ReplyText = "";
+                {
+                    vm.ReplyText = string.Empty;
+                }
             }
         }
 
         private async void SendReply_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not FrameworkElement element)
+            {
                 return;
+            }
 
             var vm = ReplyInputHelper.FindTweetViewModel(element);
-            if (vm == null || vm.IsReplySending) return;
+            if (vm == null || vm.IsReplySending)
+            {
+                return;
+            }
 
             ReplyInputHelper.SyncReplyTextFromInput(element, vm);
-            if (string.IsNullOrWhiteSpace(vm.ReplyText)) return;
+            if (string.IsNullOrWhiteSpace(vm.ReplyText))
+            {
+                return;
+            }
 
             vm.IsReplySending = true;
             try
             {
                 var response = await ViewModel.ReplyTweetAsync(vm.Id, vm.ReplyText);
-
-                if (response.IsSuccessStatusCode)
+                if (!response.IsSuccessStatusCode)
                 {
-                    var result = await response.Content.ReadFromJsonAsync<JsonElement>();
-
-                    if (result.TryGetProperty("new_tweet_id", out var newIdElement))
-                    {
-                        string newTweetId = newIdElement.GetString() ?? "";
-
-                        // 返信をツイートの直下に挿入
-                        ViewModel.AddReplyToTimeline(vm, newTweetId, vm.ReplyText);
-                    }
-
-                    // フォームを閉じる
-                    vm.IsReplying = false;
-                    vm.ReplyText = "";
-
-                    System.Diagnostics.Debug.WriteLine($"リプライ送信＆表示成功: {vm.Id}");
+                    return;
                 }
+
+                var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                if (result.TryGetProperty("new_tweet_id", out var newIdElement))
+                {
+                    var newTweetId = newIdElement.GetString() ?? string.Empty;
+                    ViewModel.AddReplyToTimeline(vm, newTweetId, vm.ReplyText);
+                }
+
+                vm.IsReplying = false;
+                vm.ReplyText = string.Empty;
             }
             catch (Exception ex)
             {
@@ -164,6 +194,7 @@ namespace App2
                 vm.IsReplySending = false;
             }
         }
+
         private void ReplyForm_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
         {
             if (!ReplyInputHelper.IsCtrlEnter(e) || sender is not DependencyObject depObj)
@@ -184,10 +215,9 @@ namespace App2
                 if (vm.IsReplySending) return;
 
                 vm.IsReplying = false;
-                vm.ReplyText = "";
+                vm.ReplyText = string.Empty;
             }
         }
-
 
         private async void MediaThumbnail_Tapped(object sender, TappedRoutedEventArgs e)
         {
@@ -198,7 +228,6 @@ namespace App2
 
             var mediaItem = image.DataContext as MediaItem;
             var mediaUrl = image.Tag as string ?? mediaItem?.Url;
-
             if (string.IsNullOrWhiteSpace(mediaUrl))
             {
                 return;
@@ -219,7 +248,7 @@ namespace App2
             var bitmap = new BitmapImage(new Uri(imageUrl))
             {
                 DecodePixelWidth = (int)(this.ActualWidth * 0.9),
-                CreateOptions = BitmapCreateOptions.IgnoreImageCache
+                CreateOptions = BitmapCreateOptions.IgnoreImageCache,
             };
 
             var imageControl = new Image
@@ -228,24 +257,25 @@ namespace App2
                 Stretch = Stretch.Uniform,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                MaxHeight = this.ActualHeight * 0.9,
-                MaxWidth = this.ActualWidth * 0.9
+                MaxHeight = ActualHeight * 0.9,
+                MaxWidth = ActualWidth * 0.9,
             };
 
             var dialog = new ContentDialog
             {
-                Title = null,
                 Content = imageControl,
                 CloseButtonText = "閉じる",
                 Background = new SolidColorBrush(Microsoft.UI.Colors.Black),
                 RequestedTheme = ElementTheme.Dark,
                 FullSizeDesired = true,
-                PrimaryButtonText = null,
-                XamlRoot = this.XamlRoot
+                XamlRoot = XamlRoot,
+                Resources =
+                {
+                    ["ContentDialogBackground"] = new SolidColorBrush(Microsoft.UI.Colors.Black),
+                    ["ContentDialogMinWidth"] = ActualWidth - 40,
+                    ["ContentDialogMinHeight"] = ActualHeight - 40,
+                }
             };
-            dialog.Resources["ContentDialogBackground"] = new SolidColorBrush(Microsoft.UI.Colors.Black);
-            dialog.Resources["ContentDialogMinWidth"] = this.ActualWidth - 40;
-            dialog.Resources["ContentDialogMinHeight"] = this.ActualHeight - 40;
 
             await dialog.ShowAsync();
             imageControl.Source = null;
@@ -266,8 +296,8 @@ namespace App2
                 Stretch = Stretch.Uniform,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                MaxHeight = this.ActualHeight * 0.9,
-                MaxWidth = this.ActualWidth * 0.9
+                MaxHeight = ActualHeight * 0.9,
+                MaxWidth = ActualWidth * 0.9,
             };
 
             var dialog = new ContentDialog
@@ -279,11 +309,14 @@ namespace App2
                 RequestedTheme = ElementTheme.Dark,
                 FullSizeDesired = true,
                 PrimaryButtonText = null,
-                XamlRoot = this.XamlRoot
+                XamlRoot = XamlRoot,
+                Resources =
+                {
+                    ["ContentDialogBackground"] = new SolidColorBrush(Microsoft.UI.Colors.Black),
+                    ["ContentDialogMinWidth"] = ActualWidth - 40,
+                    ["ContentDialogMinHeight"] = ActualHeight - 40,
+                }
             };
-            dialog.Resources["ContentDialogBackground"] = new SolidColorBrush(Microsoft.UI.Colors.Black);
-            dialog.Resources["ContentDialogMinWidth"] = this.ActualWidth - 40;
-            dialog.Resources["ContentDialogMinHeight"] = this.ActualHeight - 40;
 
             await dialog.ShowAsync();
 

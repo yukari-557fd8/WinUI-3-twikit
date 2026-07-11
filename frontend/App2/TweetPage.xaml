@@ -21,7 +21,11 @@
                      TextWrapping="Wrap"
                      Height="180"
                      TextChanged="InputBox_TextChanged"
-                     PlaceholderText="いまどうしてる？"/>
+                     PlaceholderText="いまどうしてる？">
+                <TextBox.KeyboardAccelerators>
+                    <KeyboardAccelerator Key="Enter" Modifiers="Control" Invoked="InputBox_CtrlEnterInvoked"/>
+                </TextBox.KeyboardAccelerators>
+            </TextBox>
 
             <!-- ツイートボタンエリア -->
             <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" Margin="0,12,0,0">
@@ -104,8 +108,6 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
-
-            <!--<TextBlock x:Name="OutputTextBlock" FontSize="20"/>-->
         </StackPanel>
     </Grid>
 </Page>

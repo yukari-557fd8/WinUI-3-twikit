@@ -36,53 +36,53 @@
                 </ItemsPanelTemplate>
             </ListView.ItemsPanel>
 
-			<ListView.ItemTemplate>
-				<DataTemplate x:DataType="local:NotificationViewModel">
-					<Border Margin="0,6" Padding="16" CornerRadius="12"
-							Background="#1F1F1F" BorderBrush="#2A2A2A" BorderThickness="1">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="local:NotificationViewModel">
+                    <Border Margin="0,6" Padding="16" CornerRadius="12"
+                            Background="#1F1F1F" BorderBrush="#2A2A2A" BorderThickness="1">
 
-						<StackPanel Spacing="12">
-							<!-- 通知タイプ/ユーザー -->
-							<StackPanel Orientation="Horizontal" Spacing="12">
-								<PersonPicture Width="48" Height="48" ProfilePicture="{x:Bind ActorProfileImage, Mode=OneWay}"/>
+                        <StackPanel Spacing="12">
+                            <!-- 通知タイプ/ユーザー -->
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <PersonPicture Width="48" Height="48" ProfilePicture="{x:Bind ActorProfileImage, Mode=OneWay}"/>
 
-								<!-- 名前 + スクリーンネーム + 日時 -->
-								<Grid HorizontalAlignment="Stretch">
-									<Grid.ColumnDefinitions>
-										<ColumnDefinition Width="*" />
-										<ColumnDefinition Width="Auto" />
-									</Grid.ColumnDefinitions>
+                                <!-- 名前 + スクリーンネーム + 日時 -->
+                                <Grid HorizontalAlignment="Stretch">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
 
-									<StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
-										<TextBlock Text="{x:Bind ActorName}"
-												   Style="{StaticResource BodyStrongTextBlockStyle}"
-												   FontSize="15"/>
-										<TextBlock Text="{x:Bind ActorScreenName}"
-												   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-												   Style="{StaticResource CaptionTextBlockStyle}"/>
-									</StackPanel>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock Text="{x:Bind ActorName}"
+                                                   Style="{StaticResource BodyStrongTextBlockStyle}"
+                                                   FontSize="15"/>
+                                        <TextBlock Text="{x:Bind ActorScreenName}"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                   Style="{StaticResource CaptionTextBlockStyle}"/>
+                                    </StackPanel>
 
-									<TextBlock Grid.Column="1"
-											   Text="{x:Bind CreatedAt}"
-											   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-											   Style="{StaticResource CaptionTextBlockStyle}"
-											   VerticalAlignment="Center"
-											   Margin="12,0,0,0"/>
-								</Grid>
-							</StackPanel>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{x:Bind CreatedAtDisplay, Mode=OneWay}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               VerticalAlignment="Center"
+                                               Margin="12,0,0,0"/>
+                                </Grid>
+                            </StackPanel>
 
-							<!-- 通知本文 -->
-							<TextBlock Text="{x:Bind Text}" TextWrapping="WrapWholeWords" FontSize="15" LineHeight="20"/>
+                            <!-- 通知本文 -->
+                            <TextBlock Text="{x:Bind Text}" TextWrapping="WrapWholeWords" FontSize="15" LineHeight="20"/>
 
-							<!-- 対象ツイート -->
-							<Border Visibility="{x:Bind HasTargetTweet, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-									Background="#252525" CornerRadius="8" Padding="12">
-								<TextBlock Text="{x:Bind TargetTweetText}" TextWrapping="Wrap" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-							</Border>
-						</StackPanel>
-					</Border>
-				</DataTemplate>
-			</ListView.ItemTemplate>
+                            <!-- 対象ツイート -->
+                            <Border Visibility="{x:Bind HasTargetTweet, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                    Background="#252525" CornerRadius="8" Padding="12">
+                                <TextBlock Text="{x:Bind TargetTweetText}" TextWrapping="Wrap" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ListView.ItemTemplate>
         </ListView>
     </Grid>
 </Page>

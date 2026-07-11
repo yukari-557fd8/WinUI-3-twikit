@@ -1,6 +1,7 @@
 using CommunityToolkit.WinUI.Notifications;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.Collections.ObjectModel;
@@ -33,7 +34,7 @@ namespace App2
     }
     public sealed partial class TweetPage : Page
     {
-        public ObservableCollection<MediaFile> SelectedFiles { get; } = new();
+        public ObservableCollection<MediaFile> SelectedFiles { get; } = [];
 
         // MediaFile クラスを少し強化
 
@@ -64,6 +65,15 @@ namespace App2
             CountText.Text = $"{len} 文字";
         }
 
+        private void InputBox_CtrlEnterInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+        {
+            if (SendButton?.IsEnabled == true)
+            {
+                OnSendClick(SendButton, new RoutedEventArgs());
+            }
+            args.Handled = true;
+        }
+
         // メディア選択情報を更新（件数 + 合計サイズ）
         private void UpdateSelectedMediaInfo()
         {
@@ -92,7 +102,7 @@ namespace App2
         }
 
         // バイト数を読みやすい形式に変換
-        private string FormatFileSize(long bytes)
+        private static string FormatFileSize(long bytes)
         {
             const long KB = 1024;
             const long MB = KB * 1024;
@@ -111,20 +121,23 @@ namespace App2
         {
             var picker = new FileOpenPicker
             {
-                SuggestedStartLocation = PickerLocationId.PicturesLibrary
+                SuggestedStartLocation = PickerLocationId.PicturesLibrary,
+                FileTypeFilter =
+                {
+                    ".pjp",
+                    ".jfif",
+                    ".jpe",
+                    ".pjpeg",
+                    ".jpeg",
+                    ".jpg",
+                    ".png",
+                    ".webp",
+                    ".gif",
+                    ".m4v",
+                    ".mp4",
+                    ".mov"
+                }
             };
-            picker.FileTypeFilter.Add(".pjp");
-            picker.FileTypeFilter.Add(".jfif");
-            picker.FileTypeFilter.Add(".jpe");
-            picker.FileTypeFilter.Add(".pjpeg");
-            picker.FileTypeFilter.Add(".jpeg");
-            picker.FileTypeFilter.Add(".jpg");
-            picker.FileTypeFilter.Add(".png");
-            picker.FileTypeFilter.Add(".webp");
-            picker.FileTypeFilter.Add(".gif");
-            picker.FileTypeFilter.Add(".m4v");
-            picker.FileTypeFilter.Add(".mp4");
-            picker.FileTypeFilter.Add(".mov");
 
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
@@ -152,7 +165,7 @@ namespace App2
         }
 
         // 画像ファイル判定ヘルパー
-        private bool IsImageFile(string fileType)
+        private static bool IsImageFile(string fileType)
         {
             var imageTypes = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".jfif" };
             return imageTypes.Contains(fileType.ToLower());

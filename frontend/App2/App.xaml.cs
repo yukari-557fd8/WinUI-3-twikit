@@ -1,4 +1,4 @@
-﻿// App.xaml.cs
+// App.xaml.cs
 using Microsoft.UI.Xaml;
 
 namespace App2

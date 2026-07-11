@@ -27,6 +27,7 @@
                 <muxc:NavigationViewItem Content="ホーム" Icon="Home" Tag="timeline" />
                 <muxc:NavigationViewItem Content="検索" Icon="Find" Tag="search" />
                 <muxc:NavigationViewItem Content="通知" Icon="Message" Tag="notifications" />
+                <muxc:NavigationViewItem Content="リスト" Icon="List" Tag="lists" />
                 <muxc:NavigationViewItem Content="プロフィール" Icon="Account" Tag="myprofile" />
                 <muxc:NavigationViewItem Content="設定" Icon="Setting" Tag="settings" />
             </muxc:NavigationView.MenuItems>

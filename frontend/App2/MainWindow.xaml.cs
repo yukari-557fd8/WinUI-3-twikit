@@ -91,6 +91,7 @@ namespace App2
                 case "timeline": ContentFrame.Navigate(typeof(TimelinePage)); break;
                 case "search": ContentFrame.Navigate(typeof(SearchPage)); break;
                 case "notifications": ContentFrame.Navigate(typeof(NotificationsPage)); break;
+                case "lists": ContentFrame.Navigate(typeof(ListsPage)); break;
                 case "myprofile": ContentFrame.Navigate(typeof(MyProfilePage)); break;
                 case "settings": ContentFrame.Navigate(typeof(SettingsPage)); break;
             }
