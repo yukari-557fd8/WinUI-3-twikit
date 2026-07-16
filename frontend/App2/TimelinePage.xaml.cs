@@ -22,6 +22,7 @@ namespace App2
             ViewModel = App.ViewModels.Timeline;
             this.InitializeComponent();
             this.Loaded += TimelinePage_Loaded;
+            this.Unloaded += (_, _) => StopAutoUpdate();
         }
 
         private async void TimelinePage_Loaded(object sender, RoutedEventArgs e)
@@ -30,7 +31,7 @@ namespace App2
             {
                 await ViewModel.LoadTweetsAsync();
             }
-            AttachScrollHandler();
+            AttachScrollHandler(restoreAnchor: !ViewModel.ScrollAnchor.IsEmpty);
         }
         // ==================== 自動更新機能 ====================
         private DispatcherTimer? _autoUpdateTimer;
@@ -115,14 +116,16 @@ namespace App2
             if (sender is TabView tabView && tabView.SelectedItem is TabViewItem tabItem &&
                 tabItem.Tag is string type)
             {
+                TimelineScrollAnchorHelper.SaveAnchor(TimelineListView, _scrollViewer, anchor => ViewModel.ScrollAnchor = anchor);
                 await ViewModel.SwitchTimelineAsync(type);
-                AttachScrollHandler();
+                AttachScrollHandler(restoreAnchor: true);
             }
         }
 
         private ScrollViewer? _scrollViewer;
+        private bool _isRestoringScroll;
 
-        private void AttachScrollHandler()
+        private void AttachScrollHandler(bool restoreAnchor = false)
         {
             if (TimelineListView == null) return;
 
@@ -131,7 +134,16 @@ namespace App2
 
             _scrollViewer.ViewChanged -= ScrollViewer_ViewChanged;
             _scrollViewer.ViewChanged += ScrollViewer_ViewChanged;
-            ScrollPositionHelper.RestoreOffset(_scrollViewer, ViewModel.ScrollVerticalOffset);
+
+            if (restoreAnchor && !ViewModel.ScrollAnchor.IsEmpty)
+            {
+                _isRestoringScroll = true;
+                TimelineScrollAnchorHelper.RestoreAnchor(
+                    TimelineListView,
+                    _scrollViewer,
+                    ViewModel.ScrollAnchor,
+                    onComplete: () => _isRestoringScroll = false);
+            }
         }
 
         private async void MediaThumbnail_Tapped(object sender, TappedRoutedEventArgs e)
@@ -273,9 +285,9 @@ namespace App2
             }
         }
 
-        private async void RetweetButton_Click(object sender, RoutedEventArgs e)
+        private async void RetweetMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.DataContext is TweetViewModel vm)
+            if (sender is MenuFlyoutItem { Tag: TweetViewModel vm })
             {
                 await TweetActionHandler.HandleRetweetAsync(
                     vm,
@@ -283,13 +295,25 @@ namespace App2
                     ViewModel.FindTweetById);
             }
         }
+
+        private void QuoteMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem { Tag: TweetViewModel vm })
+            {
+                vm.BeginQuoting();
+            }
+        }
+
         private void ReplyButton_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button btn && btn.DataContext is TweetViewModel vm)
             {
-                vm.IsReplying = !vm.IsReplying;   // トグル
+                vm.IsReplying = !vm.IsReplying;
                 if (vm.IsReplying)
-                    vm.ReplyText = "";
+                {
+                    vm.ReplyText = string.Empty;
+                    vm.CancelQuoting();
+                }
             }
         }
 
@@ -304,10 +328,12 @@ namespace App2
             ReplyInputHelper.SyncReplyTextFromInput(element, vm);
             if (string.IsNullOrWhiteSpace(vm.ReplyText)) return;
 
+            var replyText = vm.ReplyText;
+            var replySucceeded = false;
             vm.IsReplySending = true;
             try
             {
-                var response = await ViewModel.ReplyTweetAsync(vm.Id, vm.ReplyText);
+                var response = await ViewModel.ReplyTweetAsync(vm.Id, replyText);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -315,16 +341,11 @@ namespace App2
 
                     if (result.TryGetProperty("new_tweet_id", out var newIdElement))
                     {
-                        string newTweetId = newIdElement.GetString() ?? "";
-
-                        // 返信をツイートの直下に挿入
-                        ViewModel.AddReplyToTimeline(vm, newTweetId, vm.ReplyText);
+                        var newTweetId = newIdElement.GetString() ?? string.Empty;
+                        ViewModel.AddReplyToTimeline(vm, newTweetId, replyText);
                     }
 
-                    // フォームを閉じる
-                    vm.IsReplying = false;
-                    vm.ReplyText = "";
-
+                    replySucceeded = true;
                     System.Diagnostics.Debug.WriteLine($"リプライ送信＆表示成功: {vm.Id}");
                 }
             }
@@ -335,6 +356,11 @@ namespace App2
             finally
             {
                 vm.IsReplySending = false;
+                if (replySucceeded)
+                {
+                    vm.IsReplying = false;
+                    vm.ReplyText = string.Empty;
+                }
             }
         }
         private void CancelReply_Click(object sender, RoutedEventArgs e)
@@ -347,6 +373,87 @@ namespace App2
                 vm.ReplyText = "";
             }
         }
+
+        private void QuoteForm_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            if (!ReplyInputHelper.IsCtrlEnter(e) || sender is not DependencyObject depObj)
+            {
+                return;
+            }
+
+            if (ReplyInputHelper.TrySendQuote(depObj, s => SendQuote_Click(s, new RoutedEventArgs())))
+            {
+                e.Handled = true;
+            }
+        }
+
+        private async void SendQuote_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement element)
+            {
+                return;
+            }
+
+            var vm = ReplyInputHelper.FindTweetViewModel(element);
+            if (vm == null || vm.IsQuoteSending || string.IsNullOrEmpty(vm.Id))
+            {
+                return;
+            }
+
+            if (!TweetActionRequestGuard.TryBeginQuote(vm.Id))
+            {
+                return;
+            }
+
+            ReplyInputHelper.SyncQuoteTextFromInput(element, vm);
+            if (string.IsNullOrWhiteSpace(vm.QuoteText))
+            {
+                TweetActionRequestGuard.EndQuote(vm.Id);
+                return;
+            }
+
+            var quoteText = vm.QuoteText;
+            var quoteSucceeded = false;
+            vm.IsQuoteSending = true;
+            try
+            {
+                var response = await ViewModel.QuoteTweetAsync(vm.Id, quoteText);
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                    if (result.TryGetProperty("new_tweet_id", out var newIdElement))
+                    {
+                        var newTweetId = newIdElement.GetString() ?? string.Empty;
+                        ViewModel.AddQuoteToTimeline(vm, newTweetId, quoteText);
+                    }
+
+                    quoteSucceeded = true;
+                    System.Diagnostics.Debug.WriteLine($"引用ツイート送信＆表示成功: {vm.Id}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"引用ツイート失敗: {ex.Message}");
+            }
+            finally
+            {
+                vm.IsQuoteSending = false;
+                TweetActionRequestGuard.EndQuote(vm.Id);
+                if (quoteSucceeded)
+                {
+                    vm.CancelQuoting();
+                }
+            }
+        }
+
+        private void CancelQuote_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is TweetViewModel vm)
+            {
+                vm.CancelQuoting();
+            }
+        }
+
         private async void ScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
         {
             if (sender is not ScrollViewer scrollViewer)
@@ -354,12 +461,12 @@ namespace App2
                 return;
             }
 
-            if (!e.IsIntermediate)
+            if (!e.IsIntermediate && !_isRestoringScroll)
             {
-                ViewModel.ScrollVerticalOffset = scrollViewer.VerticalOffset;
+                TimelineScrollAnchorHelper.SaveAnchor(TimelineListView, scrollViewer, anchor => ViewModel.ScrollAnchor = anchor);
             }
 
-            if (ViewModel.IsLoading || ViewModel.IsLoadingMore)
+            if (ViewModel.IsLoading || ViewModel.IsLoadingMore || _isRestoringScroll)
             {
                 return;
             }
@@ -385,7 +492,7 @@ namespace App2
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
-            ScrollPositionHelper.SaveOffset(_scrollViewer, offset => ViewModel.ScrollVerticalOffset = offset);
+            TimelineScrollAnchorHelper.SaveAnchor(TimelineListView, _scrollViewer, anchor => ViewModel.ScrollAnchor = anchor);
             StopAutoUpdate();
             base.OnNavigatedFrom(e);
         }

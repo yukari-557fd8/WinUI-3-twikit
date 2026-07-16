@@ -10,6 +10,8 @@ namespace App2
     {
         private readonly string? jsonPath = RepositoryPaths.TryGetCookiesFilePath();
 
+        private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
         public SettingsPage()
         {
             this.InitializeComponent();
@@ -47,10 +49,10 @@ namespace App2
                 return;
             }
 
-            var dataDir = Path.GetDirectoryName(jsonPath);
-            if (!string.IsNullOrEmpty(dataDir))
+            var directory = Path.GetDirectoryName(jsonPath);
+            if (!string.IsNullOrEmpty(directory))
             {
-                Directory.CreateDirectory(dataDir);
+                Directory.CreateDirectory(directory);
             }
 
             var dict = new Dictionary<string, string>
@@ -59,8 +61,7 @@ namespace App2
                 ["ct0"] = TextBoxB.Text
             };
 
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            File.WriteAllText(jsonPath, JsonSerializer.Serialize(dict, options));
+            File.WriteAllText(jsonPath, JsonSerializer.Serialize(dict, JsonOptions));
         }
     }
 }

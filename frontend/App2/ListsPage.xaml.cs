@@ -124,14 +124,22 @@ namespace App2
             }
         }
 
-        private async void RetweetButton_Click(object sender, RoutedEventArgs e)
+        private async void RetweetMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.DataContext is TweetViewModel vm)
+            if (sender is MenuFlyoutItem { Tag: TweetViewModel vm })
             {
                 await TweetActionHandler.HandleRetweetAsync(
                     vm,
                     ViewModel.RetweetTweetAsync,
                     ViewModel.FindTweetById);
+            }
+        }
+
+        private void QuoteMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem { Tag: TweetViewModel vm })
+            {
+                vm.BeginQuoting();
             }
         }
 
@@ -143,6 +151,7 @@ namespace App2
                 if (vm.IsReplying)
                 {
                     vm.ReplyText = string.Empty;
+                    vm.CancelQuoting();
                 }
             }
         }
@@ -166,24 +175,23 @@ namespace App2
                 return;
             }
 
+            var replyText = vm.ReplyText;
+            var replySucceeded = false;
             vm.IsReplySending = true;
             try
             {
-                var response = await ViewModel.ReplyTweetAsync(vm.Id, vm.ReplyText);
-                if (!response.IsSuccessStatusCode)
+                var response = await ViewModel.ReplyTweetAsync(vm.Id, replyText);
+                if (response.IsSuccessStatusCode)
                 {
-                    return;
-                }
+                    var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                    if (result.TryGetProperty("new_tweet_id", out var newIdElement))
+                    {
+                        var newTweetId = newIdElement.GetString() ?? string.Empty;
+                        ViewModel.AddReplyToTimeline(vm, newTweetId, replyText);
+                    }
 
-                var result = await response.Content.ReadFromJsonAsync<JsonElement>();
-                if (result.TryGetProperty("new_tweet_id", out var newIdElement))
-                {
-                    var newTweetId = newIdElement.GetString() ?? string.Empty;
-                    ViewModel.AddReplyToTimeline(vm, newTweetId, vm.ReplyText);
+                    replySucceeded = true;
                 }
-
-                vm.IsReplying = false;
-                vm.ReplyText = string.Empty;
             }
             catch (Exception ex)
             {
@@ -192,6 +200,11 @@ namespace App2
             finally
             {
                 vm.IsReplySending = false;
+                if (replySucceeded)
+                {
+                    vm.IsReplying = false;
+                    vm.ReplyText = string.Empty;
+                }
             }
         }
 
@@ -216,6 +229,86 @@ namespace App2
 
                 vm.IsReplying = false;
                 vm.ReplyText = string.Empty;
+            }
+        }
+
+        private void QuoteForm_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            if (!ReplyInputHelper.IsCtrlEnter(e) || sender is not DependencyObject depObj)
+            {
+                return;
+            }
+
+            if (ReplyInputHelper.TrySendQuote(depObj, s => SendQuote_Click(s, new RoutedEventArgs())))
+            {
+                e.Handled = true;
+            }
+        }
+
+        private async void SendQuote_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement element)
+            {
+                return;
+            }
+
+            var vm = ReplyInputHelper.FindTweetViewModel(element);
+            if (vm == null || vm.IsQuoteSending || string.IsNullOrEmpty(vm.Id))
+            {
+                return;
+            }
+
+            if (!TweetActionRequestGuard.TryBeginQuote(vm.Id))
+            {
+                return;
+            }
+
+            ReplyInputHelper.SyncQuoteTextFromInput(element, vm);
+            if (string.IsNullOrWhiteSpace(vm.QuoteText))
+            {
+                TweetActionRequestGuard.EndQuote(vm.Id);
+                return;
+            }
+
+            var quoteText = vm.QuoteText;
+            var quoteSucceeded = false;
+            vm.IsQuoteSending = true;
+            try
+            {
+                var response = await ViewModel.QuoteTweetAsync(vm.Id, quoteText);
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+                    if (result.TryGetProperty("new_tweet_id", out var newIdElement))
+                    {
+                        var newTweetId = newIdElement.GetString() ?? string.Empty;
+                        ViewModel.AddQuoteToTimeline(vm, newTweetId, quoteText);
+                    }
+
+                    quoteSucceeded = true;
+                    System.Diagnostics.Debug.WriteLine($"引用ツイート送信＆表示成功: {vm.Id}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"引用ツイート失敗: {ex.Message}");
+            }
+            finally
+            {
+                vm.IsQuoteSending = false;
+                TweetActionRequestGuard.EndQuote(vm.Id);
+                if (quoteSucceeded)
+                {
+                    vm.CancelQuoting();
+                }
+            }
+        }
+
+        private void CancelQuote_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is TweetViewModel vm)
+            {
+                vm.CancelQuoting();
             }
         }
 

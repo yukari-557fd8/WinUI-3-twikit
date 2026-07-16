@@ -42,7 +42,7 @@ namespace App2
             Func<string, Task<bool>> executeRetweet,
             Func<string, TweetViewModel?> findTweet)
         {
-            if (string.IsNullOrEmpty(vm.Id) || !TweetActionRequestGuard.TryBeginRetweet(vm.Id))
+            if (string.IsNullOrEmpty(vm.Id) || vm.IsUserProtected || !TweetActionRequestGuard.TryBeginRetweet(vm.Id))
             {
                 return;
             }

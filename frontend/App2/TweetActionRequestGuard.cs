@@ -7,6 +7,7 @@ namespace App2
     {
         private static readonly HashSet<string> PendingLikes = new(StringComparer.Ordinal);
         private static readonly HashSet<string> PendingRetweets = new(StringComparer.Ordinal);
+        private static readonly HashSet<string> PendingQuotes = new(StringComparer.Ordinal);
         private static readonly object Sync = new();
 
         public static bool TryBeginLike(string tweetId)
@@ -58,6 +59,32 @@ namespace App2
             lock (Sync)
             {
                 PendingRetweets.Remove(tweetId);
+            }
+        }
+
+        public static bool TryBeginQuote(string tweetId)
+        {
+            if (string.IsNullOrEmpty(tweetId))
+            {
+                return false;
+            }
+
+            lock (Sync)
+            {
+                return PendingQuotes.Add(tweetId);
+            }
+        }
+
+        public static void EndQuote(string tweetId)
+        {
+            if (string.IsNullOrEmpty(tweetId))
+            {
+                return;
+            }
+
+            lock (Sync)
+            {
+                PendingQuotes.Remove(tweetId);
             }
         }
     }

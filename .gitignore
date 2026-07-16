@@ -3,6 +3,8 @@ bin/
 obj/
 Package/bin/
 Package/obj/
+AppPackages/
+*.assets.cache
 
 # Visual Studio
 .vs/

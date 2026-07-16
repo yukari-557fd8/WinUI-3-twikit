@@ -15,7 +15,10 @@ namespace App2
     {
         private const int DefaultTimelineFetchCount = 30;
 
-        public ObservableCollection<TweetViewModel> Tweets { get; } = [];
+        private readonly Dictionary<string, ObservableCollection<TweetViewModel>> _tweetsByType = new(StringComparer.OrdinalIgnoreCase);
+
+        public ObservableCollection<TweetViewModel> Tweets =>
+            GetOrCreateTweets(NormalizeTimelineType(CurrentTimelineType));
 
         private readonly Dictionary<string, int> _tweetCountsByType = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -26,15 +29,29 @@ namespace App2
         public int ForYouTweetCount => _tweetCountsByType.GetValueOrDefault("for_you");
         public int LatestTweetCount => _tweetCountsByType.GetValueOrDefault("latest");
 
-        public TimelineViewModel()
+        private static string NormalizeTimelineType(string? type)
+            => string.IsNullOrWhiteSpace(type) ? "for_you" : type;
+
+        private ObservableCollection<TweetViewModel> GetOrCreateTweets(string type)
         {
-            Tweets.CollectionChanged += Tweets_CollectionChanged;
+            var key = NormalizeTimelineType(type);
+            if (!_tweetsByType.TryGetValue(key, out var collection))
+            {
+                collection = [];
+                collection.CollectionChanged += (_, _) => UpdateTweetCount(key);
+                _tweetsByType[key] = collection;
+            }
+
+            return collection;
         }
 
-        private void Tweets_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        private void UpdateTweetCount(string type)
         {
-            var key = string.IsNullOrWhiteSpace(CurrentTimelineType) ? "for_you" : CurrentTimelineType;
-            _tweetCountsByType[key] = Tweets.Count;
+            if (_tweetsByType.TryGetValue(type, out var collection))
+            {
+                _tweetCountsByType[type] = collection.Count;
+            }
+
             OnPropertyChanged(nameof(ForYouTweetCount));
             OnPropertyChanged(nameof(LatestTweetCount));
         }
@@ -79,20 +96,12 @@ namespace App2
 
         public bool IsChronologicalTimeline => !string.Equals(CurrentTimelineType, "for_you", StringComparison.OrdinalIgnoreCase);
 
-        private readonly Dictionary<string, double> _scrollOffsetsByTimelineType = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, TimelineScrollAnchor> _scrollAnchorByTimelineType = new(StringComparer.OrdinalIgnoreCase);
 
-        public double ScrollVerticalOffset
+        public TimelineScrollAnchor ScrollAnchor
         {
-            get
-            {
-                var key = string.IsNullOrWhiteSpace(CurrentTimelineType) ? "default" : CurrentTimelineType;
-                return _scrollOffsetsByTimelineType.GetValueOrDefault(key);
-            }
-            set
-            {
-                var key = string.IsNullOrWhiteSpace(CurrentTimelineType) ? "default" : CurrentTimelineType;
-                _scrollOffsetsByTimelineType[key] = value;
-            }
+            get => _scrollAnchorByTimelineType.GetValueOrDefault(NormalizeTimelineType(CurrentTimelineType));
+            set => _scrollAnchorByTimelineType[NormalizeTimelineType(CurrentTimelineType)] = value;
         }
 
         private HashSet<string> GetSeenSet()
@@ -132,9 +141,19 @@ namespace App2
 
         public async Task SwitchTimelineAsync(string newType)
         {
-            if (CurrentTimelineType == newType) return;
-            CurrentTimelineType = newType;
-            await LoadTweetsAsync();
+            var normalizedType = NormalizeTimelineType(newType);
+            if (string.Equals(CurrentTimelineType, normalizedType, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            CurrentTimelineType = normalizedType;
+            OnPropertyChanged(nameof(Tweets));
+
+            if (GetOrCreateTweets(normalizedType).Count == 0)
+            {
+                await LoadTweetsAsync();
+            }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -258,6 +277,11 @@ namespace App2
                 return;
             }
 
+            if (App.IsShuttingDown)
+            {
+                return;
+            }
+
             Microsoft.UI.Dispatching.DispatcherQueue? dispatcher =
                 Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread()
                 ?? App.MainWindow?.DispatcherQueue;
@@ -271,6 +295,11 @@ namespace App2
 
             dispatcher.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
             {
+                if (App.IsShuttingDown)
+                {
+                    return;
+                }
+
                 try
                 {
                     var seenSet = GetSeenSet();
@@ -331,6 +360,9 @@ namespace App2
             }
         }
 
+        public Task<HttpResponseMessage> QuoteTweetAsync(string tweetId, string quoteText)
+            => TweetActionClient.QuoteAsync(_httpClient, tweetId, quoteText);
+
         public void AddReplyToTimeline(TweetViewModel originalVm, string newTweetId, string replyText)
         {
             var replyVm = new TweetViewModel
@@ -363,6 +395,42 @@ namespace App2
 
             System.Diagnostics.Debug.WriteLine($"返信を挿入しました: {newTweetId}");
         }
+
+        public void AddQuoteToTimeline(TweetViewModel originalVm, string newTweetId, string quoteText)
+        {
+            var quoteVm = new TweetViewModel
+            {
+                Id = newTweetId,
+                TimelineEntryId = newTweetId,
+                Text = quoteText,
+                UserName = "八雲ゆかり",
+                UserScreenName = "@yukari_557fd8",
+                CreatedAt = TimeDisplayHelper.FormatNowForStorage(),
+                IsLiked = false,
+                IsRetweeted = false,
+                ReplyCount = 0,
+                FavoriteCount = 0,
+                RetweetCount = 0,
+                QuotedTweet = originalVm.ToQuotedPreview(),
+                UserProfileImage = ImageCache.GetOrCreate(
+                    "https://pbs.twimg.com/profile_images/1938605137813282816/u5D3g9W3_400x400.jpg",
+                    96)
+            };
+            TweetViewModel.FinalizeQuotedCardMedia(quoteVm);
+
+            int index = Tweets.IndexOf(originalVm);
+            if (index >= 0)
+            {
+                Tweets.Insert(index + 1, quoteVm);
+            }
+            else
+            {
+                Tweets.Add(quoteVm);
+            }
+
+            System.Diagnostics.Debug.WriteLine($"引用ツイートを挿入しました: {newTweetId}");
+        }
+
         public async Task<List<TweetViewModel>> GetNewTweetsAsync()
         {
             var newVms = new List<TweetViewModel>();

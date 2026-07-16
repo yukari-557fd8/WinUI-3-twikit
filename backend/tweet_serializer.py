@@ -1,5 +1,12 @@
+import html
 from datetime import timezone, timedelta
 from typing import Any, Dict, List
+
+
+def _normalize_text(text: str) -> str:
+    if not text:
+        return ""
+    return html.unescape(text)
 
 
 def _format_created_at(t) -> str:
@@ -92,11 +99,12 @@ def _quote_to_dict(quoted) -> Dict[str, Any]:
 
     return {
         "id": quoted.id,
-        "text": text,
+        "text": _normalize_text(text),
         "created_at": _format_created_at(quoted),
         "user_name": getattr(quoted.user, "name", "Unknown"),
         "user_screen_name": getattr(quoted.user, "screen_name", ""),
         "user_profile_image": getattr(quoted.user, "profile_image_url", "") or "",
+        "user_protected": getattr(quoted.user, "protected", False),
         "media_items": _extract_media(quoted),
         "is_unavailable": False,
     }
@@ -116,11 +124,12 @@ def tweet_to_dict(t) -> Dict[str, Any]:
     result = {
         "id": display.id,
         "timeline_entry_id": str(t.id),
-        "text": text,
+        "text": _normalize_text(text),
         "created_at": _format_created_at(display),
         "user_name": getattr(display.user, "name", "Unknown"),
         "user_screen_name": getattr(display.user, "screen_name", ""),
         "user_profile_image": getattr(display.user, "profile_image_url", "") or "",
+        "user_protected": getattr(display.user, "protected", False),
         "favorite_count": getattr(display, "favorite_count", 0),
         "retweet_count": getattr(display, "retweet_count", 0),
         "reply_count": getattr(display, "reply_count", 0),

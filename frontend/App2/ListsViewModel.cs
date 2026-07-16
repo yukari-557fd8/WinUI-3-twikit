@@ -262,6 +262,9 @@ namespace App2
             }
         }
 
+        public Task<HttpResponseMessage> QuoteTweetAsync(string tweetId, string quoteText)
+            => TweetActionClient.QuoteAsync(_httpClient, tweetId, quoteText);
+
         public void AddReplyToTimeline(TweetViewModel originalVm, string newTweetId, string replyText)
         {
             var replyVm = new TweetViewModel
@@ -289,6 +292,39 @@ namespace App2
             else
             {
                 Tweets.Add(replyVm);
+            }
+        }
+
+        public void AddQuoteToTimeline(TweetViewModel originalVm, string newTweetId, string quoteText)
+        {
+            var quoteVm = new TweetViewModel
+            {
+                Id = newTweetId,
+                TimelineEntryId = newTweetId,
+                Text = quoteText,
+                UserName = "八雲ゆかり",
+                UserScreenName = "@yukari_557fd8",
+                CreatedAt = TimeDisplayHelper.FormatNowForStorage(),
+                IsLiked = false,
+                IsRetweeted = false,
+                ReplyCount = 0,
+                FavoriteCount = 0,
+                RetweetCount = 0,
+                QuotedTweet = originalVm.ToQuotedPreview(),
+                UserProfileImage = ImageCache.GetOrCreate(
+                    "https://pbs.twimg.com/profile_images/1938605137813282816/u5D3g9W3_400x400.jpg",
+                    96)
+            };
+            TweetViewModel.FinalizeQuotedCardMedia(quoteVm);
+
+            var index = Tweets.IndexOf(originalVm);
+            if (index >= 0)
+            {
+                Tweets.Insert(index + 1, quoteVm);
+            }
+            else
+            {
+                Tweets.Add(quoteVm);
             }
         }
 

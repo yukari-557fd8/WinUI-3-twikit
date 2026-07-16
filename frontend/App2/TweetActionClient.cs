@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -49,6 +50,31 @@ namespace App2
             {
                 System.Diagnostics.Debug.WriteLine($"Retweet API Error: {ex.Message}");
                 return false;
+            }
+        }
+
+        public static async Task<HttpResponseMessage> QuoteAsync(
+            HttpClient client,
+            string tweetId,
+            string quoteText)
+        {
+            if (string.IsNullOrEmpty(tweetId))
+            {
+                return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
+            }
+
+            try
+            {
+                var content = new StringContent(
+                    JsonSerializer.Serialize(new { text = quoteText }),
+                    Encoding.UTF8,
+                    "application/json");
+                return await client.PostAsync($"http://localhost:8000/quote/{tweetId}", content);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Quote API Error: {ex.Message}");
+                return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
             }
         }
 

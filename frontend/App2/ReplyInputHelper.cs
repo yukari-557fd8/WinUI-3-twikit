@@ -85,6 +85,73 @@ namespace App2
             return true;
         }
 
+        public static void SyncQuoteTextFromInput(DependencyObject element, TweetViewModel vm)
+        {
+            var textBox = FindQuoteTextBoxInAncestors(element);
+            if (textBox != null)
+            {
+                vm.QuoteText = textBox.Text;
+            }
+        }
+
+        public static bool TrySendQuote(DependencyObject element, Action<object> sendQuote)
+        {
+            var vm = FindTweetViewModel(element);
+            if (vm == null || !vm.IsQuoting || vm.IsQuoteSending)
+            {
+                return false;
+            }
+
+            SyncQuoteTextFromInput(element, vm);
+            if (string.IsNullOrWhiteSpace(vm.QuoteText))
+            {
+                return false;
+            }
+
+            sendQuote(element);
+            return true;
+        }
+
+        private static TextBox? FindQuoteTextBoxInAncestors(DependencyObject element)
+        {
+            var current = element;
+            while (current != null)
+            {
+                if (current is FrameworkElement { Tag: TweetViewModel })
+                {
+                    var textBox = FindQuoteTextBoxInSubtree(current);
+                    if (textBox != null)
+                    {
+                        return textBox;
+                    }
+                }
+
+                current = VisualTreeHelper.GetParent(current);
+            }
+
+            return null;
+        }
+
+        private static TextBox? FindQuoteTextBoxInSubtree(DependencyObject element)
+        {
+            if (element is TextBox { Name: "QuoteTextBox" })
+            {
+                return (TextBox)element;
+            }
+
+            var childCount = VisualTreeHelper.GetChildrenCount(element);
+            for (var i = 0; i < childCount; i++)
+            {
+                var found = FindQuoteTextBoxInSubtree(VisualTreeHelper.GetChild(element, i));
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
+        }
+
         private static TextBox? FindReplyTextBoxInAncestors(DependencyObject element)
         {
             var current = element;

@@ -1,82 +1,76 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
-    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <RootNamespace>App2</RootNamespace>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Platforms>x86;x64;ARM64</Platforms>
-    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
-    <UseWinUI>true</UseWinUI>
-    <WinUISDKReferences>true</WinUISDKReferences>
-    <Nullable>enable</Nullable>
-	<AppxBundlePlatforms>x86;x64;arm64</AppxBundlePlatforms>
-  </PropertyGroup>
-  <ItemGroup>
-    <Compile Remove="TimelinePage.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Remove="MyProfilePage.xaml" />
-    <None Remove="NotificationsPage.xaml" />
-    <None Remove="SearchPage.xaml" />
-    <None Remove="TimelinePage.xaml" />
-  </ItemGroup>
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+        <RootNamespace>App2</RootNamespace>
+        <Platforms>x86;x64;ARM64</Platforms>
+        <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+        <UseWinUI>true</UseWinUI>
+        <Nullable>enable</Nullable>
+        <AppxBundlePlatforms>x86;x64;arm64</AppxBundlePlatforms>
 
-  <ItemGroup>
-    <Manifest Include="$(ApplicationManifest)" />
-  </ItemGroup>
+        <!-- JSON リフレクションを有効化 -->
+        <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
-    <PackageReference Include="CommunityToolkit.WinUI.Notifications" Version="7.1.2" />
-  </ItemGroup>
+    <!-- 不要な Remove をすべて削除 -->
+    <!-- 不要な Page Update も削除（WinUI 3 は自動で処理する） -->
 
-	<ItemGroup>
-		<Compile Include="TimelinePage.cs">
-			<DependentUpon>TimelinePage.xaml</DependentUpon>
-		</Compile>
-	</ItemGroup>
+    <PropertyGroup>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
 
-	<ItemGroup>
-	  <Page Update="NotificationsPage.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	</ItemGroup>
+    <PropertyGroup>
+        <NoWarn>NU1701</NoWarn>
+    </PropertyGroup>
 
-	<ItemGroup>
-	  <Page Update="MyProfilePage.xaml">
-	    <Generator>MSBuild:Compile</Generator>
-	  </Page>
-	</ItemGroup>
 
-	<ItemGroup>
-	  <Page Update="SearchPage.xaml">
-	    <Generator></Generator>
-	  </Page>
-	</ItemGroup>
+    <ItemGroup>
+      <Content Remove="TwitterIcon48.png" />
+    </ItemGroup>
 
-	<ItemGroup>
-	  <Page Update="TweetPage.xaml">
-	    <Generator></Generator>
-	  </Page>
-	  <Page Update="MainWindow.xaml">
-	    <Generator></Generator>
-	  </Page>
-	  <Page Update="SettingsPage.xaml">
-	    <Generator></Generator>
-	  </Page>
-	  <Page Update="TimelinePage.xaml">
-	    <Generator></Generator>
-	  </Page>
-	</ItemGroup>
+    <ItemGroup>
+      <None Remove="action_queue.py" />
+      <None Remove="api.py" />
+      <None Remove="get_lists_twikit.py" />
+      <None Remove="get_my_profile.py" />
+      <None Remove="get_notifications_twikit.py" />
+      <None Remove="get_search_twikit.py" />
+      <None Remove="get_timeline_twikit.py" />
+      <None Remove="post_tweet.py" />
+      <None Remove="tweet_serializer.py" />
+      <None Remove="twikit_client.py" />
+      <None Remove="TwitterIcon400.ico" />
+      <None Remove="x.com.cookies_yukari_557fd8.json" />
+    </ItemGroup>
 
+    <ItemGroup>
+      <Content Include="TwitterIcon48.ico" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+        <Manifest Include="$(ApplicationManifest)" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="H.NotifyIcon.WinUI" Version="2.2.0" />
+        <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1839" />
+        <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.2.0" />
+        <PackageReference Include="CommunityToolkit.WinUI.Notifications" Version="7.1.2" />
+    </ItemGroup>
 
     <!-- Publish Properties -->
-  <PropertyGroup>
-    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
-    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
-    <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
-    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
-  </PropertyGroup>
+    <PropertyGroup>
+        <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
+        <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
+
+        <!-- WinUI 3 は Trim と相性が悪いので無効化 -->
+        <PublishTrimmed>false</PublishTrimmed>
+
+        <!-- AOT も無効化 -->
+        <PublishAot>false</PublishAot>
+        <ApplicationIcon>TwitterIcon48.ico</ApplicationIcon>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+    </PropertyGroup>
 </Project>

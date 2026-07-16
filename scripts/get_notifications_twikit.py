@@ -2,13 +2,15 @@ from twikit_client import client, login
 from datetime import timezone, timedelta, datetime
 from typing import List, Dict
 
+from tweet_serializer import _normalize_text
+
 # 状態をモジュールレベルで保持（ただし毎回リセット推奨）
 _notifications_result = None
 
 
 async def get_notifications(count: int = 20, refresh: bool = True) -> List[Dict]:
     global _notifications_result
-    await login()
+    login()
 
     results: List[Dict] = []
 
@@ -49,7 +51,9 @@ async def get_notifications(count: int = 20, refresh: bool = True) -> List[Dict]
                 {
                     "id": getattr(n, "id", ""),
                     "type": getattr(n, "type", "unknown"),
-                    "text": getattr(n, "text", "") or getattr(n, "message", ""),
+                    "text": _normalize_text(
+                        getattr(n, "text", "") or getattr(n, "message", "")
+                    ),
                     "actor_name": (
                         getattr(actor, "name", "Unknown") if actor else "Unknown"
                     ),
@@ -60,7 +64,7 @@ async def get_notifications(count: int = 20, refresh: bool = True) -> List[Dict]
                         getattr(actor, "profile_image_url", "") if actor else ""
                     ),
                     "created_at": created_str,
-                    "target_tweet_text": (
+                    "target_tweet_text": _normalize_text(
                         getattr(target_tweet, "text", "") if target_tweet else ""
                     ),
                 }

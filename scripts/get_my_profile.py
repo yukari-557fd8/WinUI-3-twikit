@@ -3,10 +3,10 @@ from datetime import timezone, timedelta
 
 
 async def get_own_profile():
-    await login()  # 中央集中ログインを使用
+    login()  # 中央集中ログインを使用
 
     try:
-        user = await client.user()
+        user = await client.get_user_by_screen_name("yukari_557fd8")
 
         created_str = "不明"
         try:

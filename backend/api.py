@@ -87,14 +87,34 @@ async def retweet_tweet(tweet_id: str):
 
 @app.post("/reply/{tweet_id}")
 async def reply_to_tweet(tweet_id: str, data: Input):
-    await action_queue.enqueue(
-        ActionJob(action="reply", tweet_id=tweet_id, text=data.text)
+    await twikit_client.login()
+    tweet = await gtt.client.create_tweet(
+        text=data.text or "",
+        reply_to=tweet_id,
     )
     return {
         "success": True,
         "action": "reply",
         "tweet_id": tweet_id,
-        "queued": True,
+        "new_tweet_id": str(tweet.id),
+        "queued": False,
+    }
+
+
+@app.post("/quote/{tweet_id}")
+async def quote_tweet(tweet_id: str, data: Input):
+    await twikit_client.login()
+    attachment_url = f"https://x.com/i/status/{tweet_id}"
+    tweet = await gtt.client.create_tweet(
+        text=data.text or "",
+        attachment_url=attachment_url,
+    )
+    return {
+        "success": True,
+        "action": "quote",
+        "tweet_id": tweet_id,
+        "new_tweet_id": str(tweet.id),
+        "queued": False,
     }
 
 

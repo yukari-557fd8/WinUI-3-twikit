@@ -1,4 +1,3 @@
-﻿// ServerManager.cs
 using Microsoft.UI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -16,6 +15,7 @@ namespace App2
         private static Process? _pythonProcess;
         private const string Host = "127.0.0.1";
         private const int Port = 8000;
+        private const string StartupCompleteMarker = "Application startup complete";
 
         public static async Task StartServerAsync(TextBlock statusTextBlock)
         {
@@ -25,7 +25,7 @@ namespace App2
                 return;
             }
 
-            UpdateStatus(statusTextBlock, "API Server: Starting...", Colors.Yellow);
+            UpdateStatus(statusTextBlock, "API Server: Starting…", Colors.Yellow);
 
             try
             {
@@ -35,6 +35,8 @@ namespace App2
                     UpdateStatus(statusTextBlock, "API Server: backend/api.py not found ❌", Colors.Red);
                     return;
                 }
+
+                var startupComplete = new TaskCompletionSource<bool>();
 
                 _pythonProcess = new Process
                 {
@@ -50,32 +52,46 @@ namespace App2
                     }
                 };
 
-                _pythonProcess.OutputDataReceived += (sender, e) =>
+                void OnUvicornLog(string? line)
                 {
-                    if (!string.IsNullOrEmpty(e.Data))
+                    if (string.IsNullOrEmpty(line))
                     {
-                        Debug.WriteLine($"Uvicorn: {e.Data}");
-                        if (e.Data.Contains("Uvicorn running") || e.Data.Contains("Application startup complete"))
-                        {
-                            App.MainWindow?.DispatcherQueue.TryEnqueue(() =>
-                                UpdateStatus(statusTextBlock, "API Server: Running ✅", Colors.LimeGreen));
-                        }
+                        return;
                     }
-                };
 
-                _pythonProcess.ErrorDataReceived += (sender, e) =>
-                {
-                    if (!string.IsNullOrEmpty(e.Data))
-                        Debug.WriteLine($"Uvicorn Error: {e.Data}");
-                };
+                    Debug.WriteLine($"Uvicorn: {line}");
+                    if (!line.Contains(StartupCompleteMarker) && !line.Contains("Uvicorn running"))
+                    {
+                        return;
+                    }
+
+                    startupComplete.TrySetResult(true);
+                    App.MainWindow?.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        if (App.IsShuttingDown)
+                        {
+                            return;
+                        }
+
+                        UpdateStatus(statusTextBlock, "API Server: Running ✅", Colors.LimeGreen);
+                    });
+                }
+
+                _pythonProcess.OutputDataReceived += (_, e) => OnUvicornLog(e.Data);
+                _pythonProcess.ErrorDataReceived += (_, e) => OnUvicornLog(e.Data);
 
                 _pythonProcess.Start();
                 _pythonProcess.BeginOutputReadLine();
                 _pythonProcess.BeginErrorReadLine();
 
-                await Task.Delay(5000); // 少し長めに待機
+                await Task.WhenAny(startupComplete.Task, Task.Delay(TimeSpan.FromSeconds(30)));
 
-                if (!_pythonProcess.HasExited && IsPortInUse(Port))
+                if (startupComplete.Task.IsCompleted)
+                {
+                    return;
+                }
+
+                if (IsPortInUse(Port))
                 {
                     UpdateStatus(statusTextBlock, "API Server: Running ✅", Colors.LimeGreen);
                 }
@@ -106,16 +122,34 @@ namespace App2
 
         private static void UpdateStatus(TextBlock? textBlock, string message, Color color)
         {
-            if (textBlock == null) return;
+            if (App.IsShuttingDown || textBlock == null)
+            {
+                return;
+            }
+
             textBlock.Text = message;
             textBlock.Foreground = new SolidColorBrush(color);
         }
 
         public static void StopServer()
         {
-            if (_pythonProcess != null && !_pythonProcess.HasExited)
+            if (_pythonProcess == null)
             {
-                try { _pythonProcess.Kill(true); _pythonProcess.Dispose(); } catch { }
+                return;
+            }
+
+            try
+            {
+                if (!_pythonProcess.HasExited)
+                {
+                    _pythonProcess.Kill(true);
+                }
+            }
+            catch { }
+            finally
+            {
+                _pythonProcess.Dispose();
+                _pythonProcess = null;
             }
         }
     }

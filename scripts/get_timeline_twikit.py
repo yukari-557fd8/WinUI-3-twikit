@@ -1,9 +1,26 @@
-from typing import Dict, List
+from twikit_client import client
+from typing import List, Dict
+import os
+import json
 
 from tweet_serializer import tweet_to_dict
-from twikit_client import client, login
 
 last_cursor = None
+
+
+async def login_if_needed(cookies_file: str = "x.com.cookies_yukari_557fd8.json"):
+    if not os.path.exists(cookies_file):
+        print("Cookiesファイルが見つかりません")
+        return False
+    try:
+        with open(cookies_file, "r", encoding="utf-8") as f:
+            cookies = json.load(f)
+        client.set_cookies(cookies)
+        print("Cookiesセット完了")
+        return True
+    except Exception as e:
+        print(f"Cookiesセット失敗: {e}")
+        return False
 
 
 async def get_timeline_tweets(
@@ -11,9 +28,9 @@ async def get_timeline_tweets(
     count_per_page: int | None = 30,
     timeline_type: str = "for_you",
     cursor: str | None = None,
-) -> Dict:
+) -> List[Dict]:
     global last_cursor
-    await login()
+    await login_if_needed()
 
     results: List[Dict] = []
     current_cursor = cursor or None
@@ -34,8 +51,10 @@ async def get_timeline_tweets(
                 request_kwargs["cursor"] = current_cursor
 
             if timeline_type == "latest":
+                # 最新タイムライン
                 timeline = await client.get_latest_timeline(**request_kwargs)
             else:
+                # おすすめ（For You）タイムライン
                 timeline = await client.get_timeline(**request_kwargs)
 
             if not timeline or len(timeline) == 0:
@@ -52,6 +71,7 @@ async def get_timeline_tweets(
                 seen.add(t.id)
                 results.append(tweet_to_dict(t))
 
+            # cursor更新
             if hasattr(timeline, "next_cursor") and timeline.next_cursor:
                 current_cursor = timeline.next_cursor
                 last_cursor = current_cursor

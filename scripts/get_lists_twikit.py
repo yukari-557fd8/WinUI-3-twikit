@@ -1,11 +1,11 @@
-from typing import Dict, List
+from twikit_client import client, login
+from typing import List, Dict
 
 from tweet_serializer import tweet_to_dict
-from twikit_client import client, login
 
 
 async def get_user_lists(count: int = 100, cursor: str | None = None) -> Dict:
-    await login()
+    login()
 
     try:
         print(f"リスト一覧取得中... count={count} cursor={'あり' if cursor else 'なし'}")
@@ -35,7 +35,7 @@ async def get_user_lists(count: int = 100, cursor: str | None = None) -> Dict:
 async def get_list_timeline(
     list_id: str, count: int = 30, cursor: str | None = None
 ) -> Dict:
-    await login()
+    login()
 
     results: List[Dict] = []
     next_cursor = cursor

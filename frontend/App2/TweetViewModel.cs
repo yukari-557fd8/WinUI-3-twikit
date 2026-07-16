@@ -14,6 +14,7 @@ namespace App2
         public string? user_name { get; set; }
         public string? user_screen_name { get; set; }
         public string? user_profile_image { get; set; }
+        public bool user_protected { get; set; }
         public int favorite_count { get; set; }
         public int retweet_count { get; set; }
         public int reply_count { get; set; }
@@ -34,6 +35,7 @@ namespace App2
         public string? user_name { get; set; }
         public string? user_screen_name { get; set; }
         public string? user_profile_image { get; set; }
+        public bool user_protected { get; set; }
         public List<MediaItemDto>? media_items { get; set; }
         public bool is_unavailable { get; set; }
     }
@@ -83,6 +85,7 @@ namespace App2
         public string Text { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
         public string UserScreenName { get; set; } = string.Empty;
+        public bool IsUserProtected { get; set; }
         public string CreatedAt { get; set; } = string.Empty;
         public string CreatedAtDisplay => TimeDisplayHelper.FormatDisplay(CreatedAt);
         public string CreatedAtAbsoluteDisplay => TimeDisplayHelper.FormatAbsoluteDisplay(CreatedAt);
@@ -109,6 +112,8 @@ namespace App2
         public bool HasText => !string.IsNullOrWhiteSpace(Text);
         public string UserName { get; set; } = string.Empty;
         public string UserScreenName { get; set; } = string.Empty;
+        public bool IsUserProtected { get; set; }
+        public bool IsRetweetEnabled => !IsUserProtected;
         public string CreatedAt { get; set; } = string.Empty;
         public string CreatedAtDisplay => TimeDisplayHelper.FormatDisplay(CreatedAt);
         public string CreatedAtAbsoluteDisplay => TimeDisplayHelper.FormatAbsoluteDisplay(CreatedAt);
@@ -117,6 +122,9 @@ namespace App2
         public int FavoriteCount { get; set; } = 0;
         public int RetweetCount { get; set; } = 0;
         public int ReplyCount { get; set; } = 0;
+        public string FavoriteCountDisplay => MetricDisplayHelper.Format(FavoriteCount);
+        public string RetweetCountDisplay => MetricDisplayHelper.Format(RetweetCount);
+        public string ReplyCountDisplay => MetricDisplayHelper.Format(ReplyCount);
         public List<MediaItem> MediaItems { get; set; } = [];
         public List<MediaItem> QuotedCardMediaItems { get; set; } = [];
 
@@ -158,6 +166,47 @@ namespace App2
 
         public TweetViewModel ReplyOwner => this;
 
+        private bool _isQuoting;
+        public bool IsQuoting
+        {
+            get => _isQuoting;
+            set { _isQuoting = value; OnPropertyChanged(nameof(IsQuoting)); }
+        }
+
+        private string _quoteText = string.Empty;
+        public string QuoteText
+        {
+            get => _quoteText;
+            set { _quoteText = value; OnPropertyChanged(nameof(QuoteText)); }
+        }
+
+        private bool _isQuoteSending;
+        public bool IsQuoteSending
+        {
+            get => _isQuoteSending;
+            set
+            {
+                _isQuoteSending = value;
+                OnPropertyChanged(nameof(IsQuoteSending));
+                OnPropertyChanged(nameof(IsQuoteSendEnabled));
+            }
+        }
+
+        public bool IsQuoteSendEnabled => !_isQuoteSending;
+
+        public TweetViewModel QuoteOwner => this;
+
+        private TweetViewModel? _quotePreviewTweet;
+        public TweetViewModel? QuotePreviewTweet
+        {
+            get => _quotePreviewTweet;
+            private set
+            {
+                _quotePreviewTweet = value;
+                OnPropertyChanged(nameof(QuotePreviewTweet));
+            }
+        }
+
         public QuotedTweetViewModel? QuotedTweet { get; set; }
         public bool HasQuotedTweet => QuotedTweet != null;
 
@@ -176,6 +225,7 @@ namespace App2
                 UserScreenName = string.IsNullOrEmpty(dto.user_screen_name)
                     ? string.Empty
                     : "@" + dto.user_screen_name,
+                IsUserProtected = dto.user_protected,
                 CreatedAt = dto.created_at ?? string.Empty,
                 RetweetCount = dto.retweet_count,
                 FavoriteCount = dto.favorite_count,
@@ -199,7 +249,7 @@ namespace App2
             return vm;
         }
 
-        private static void FinalizeQuotedCardMedia(TweetViewModel vm)
+        internal static void FinalizeQuotedCardMedia(TweetViewModel vm)
         {
             if (vm.QuotedTweet is not { IsUnavailable: false })
             {
@@ -208,7 +258,7 @@ namespace App2
             }
 
             vm.QuotedCardMediaItems = vm.QuotedTweet.HasMedia
-                ? [.. vm.QuotedTweet.MediaItems.Take(1)]
+                ? [.. vm.QuotedTweet.MediaItems]
                 : [];
         }
 
@@ -227,9 +277,10 @@ namespace App2
                 UserScreenName = string.IsNullOrEmpty(dto.user_screen_name)
                     ? string.Empty
                     : "@" + dto.user_screen_name,
+                IsUserProtected = dto.user_protected,
                 CreatedAt = dto.created_at ?? string.Empty,
                 MediaItems = dto.media_items?
-                    .Select(m => MediaItemMapper.FromDto(m, 320))
+                    .Select(m => MediaItemMapper.FromDto(m, 640))
                     .ToList() ?? [],
                 UserProfileImage = ImageCache.GetOrCreate(dto.user_profile_image, 96)
             };
@@ -246,6 +297,7 @@ namespace App2
             FavoriteCount += IsLiked ? 1 : -1;
             OnPropertyChanged(nameof(IsLiked));
             OnPropertyChanged(nameof(FavoriteCount));
+            OnPropertyChanged(nameof(FavoriteCountDisplay));
         }
 
         public void ToggleRetweet()
@@ -254,6 +306,64 @@ namespace App2
             RetweetCount += IsRetweeted ? 1 : -1;
             OnPropertyChanged(nameof(IsRetweeted));
             OnPropertyChanged(nameof(RetweetCount));
+            OnPropertyChanged(nameof(RetweetCountDisplay));
         }
+
+        public void BeginQuoting()
+        {
+            if (IsUserProtected)
+            {
+                return;
+            }
+
+            IsReplying = false;
+            ReplyText = string.Empty;
+            QuoteText = string.Empty;
+
+            var preview = new TweetViewModel
+            {
+                QuotedTweet = CreateQuotedPreviewFrom(this),
+            };
+            FinalizeQuotedCardMedia(preview);
+            QuotePreviewTweet = preview;
+            IsQuoting = true;
+        }
+
+        public void CancelQuoting()
+        {
+            if (IsQuoteSending)
+            {
+                return;
+            }
+
+            IsQuoting = false;
+            QuoteText = string.Empty;
+            QuotePreviewTweet = null;
+        }
+
+        private static QuotedTweetViewModel CreateQuotedPreviewFrom(TweetViewModel source)
+        {
+            return new QuotedTweetViewModel
+            {
+                Id = source.Id,
+                Text = source.Text,
+                UserName = source.UserName,
+                UserScreenName = source.UserScreenName,
+                IsUserProtected = source.IsUserProtected,
+                CreatedAt = source.CreatedAt,
+                MediaItems = [.. source.MediaItems
+                    .Select(m => new MediaItem
+                    {
+                        Type = m.Type,
+                        Url = m.Url,
+                        Thumbnail = m.Thumbnail,
+                        ThumbnailImage = m.ThumbnailImage,
+                    })],
+                UserProfileImage = source.UserProfileImage,
+            };
+        }
+
+        public QuotedTweetViewModel ToQuotedPreview()
+            => CreateQuotedPreviewFrom(this);
     }
 }

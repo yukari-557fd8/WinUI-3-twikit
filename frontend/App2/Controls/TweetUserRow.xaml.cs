@@ -46,6 +46,13 @@ namespace App2.Controls
                 typeof(TweetUserRow),
                 new PropertyMetadata(null));
 
+        public static readonly DependencyProperty IsUserProtectedProperty =
+            DependencyProperty.Register(
+                nameof(IsUserProtected),
+                typeof(bool),
+                typeof(TweetUserRow),
+                new PropertyMetadata(false));
+
         public string UserName
         {
             get => (string)GetValue(UserNameProperty);
@@ -74,6 +81,12 @@ namespace App2.Controls
         {
             get => (ImageSource?)GetValue(UserProfileImageProperty);
             set => SetValue(UserProfileImageProperty, value);
+        }
+
+        public bool IsUserProtected
+        {
+            get => (bool)GetValue(IsUserProtectedProperty);
+            set => SetValue(IsUserProtectedProperty, value);
         }
     }
 }

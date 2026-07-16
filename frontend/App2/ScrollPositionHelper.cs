@@ -37,7 +37,7 @@ namespace App2
 
         public static void RestoreOffset(ScrollViewer? scrollViewer, double offset)
         {
-            if (scrollViewer == null || offset <= 0)
+            if (App.IsShuttingDown || scrollViewer == null || offset <= 0)
             {
                 return;
             }
@@ -48,15 +48,27 @@ namespace App2
 
         private static void RestoreOffsetDeferred(ScrollViewer scrollViewer, double offset, int attempt = 0)
         {
-            if (scrollViewer.ExtentHeight >= offset + scrollViewer.ViewportHeight || attempt >= 15)
+            if (App.IsShuttingDown)
             {
-                scrollViewer.ChangeView(null, offset, null, true);
                 return;
             }
 
-            scrollViewer.DispatcherQueue.TryEnqueue(
-                DispatcherQueuePriority.Low,
-                () => RestoreOffsetDeferred(scrollViewer, offset, attempt + 1));
+            try
+            {
+                if (scrollViewer.ExtentHeight >= offset + scrollViewer.ViewportHeight || attempt >= 15)
+                {
+                    scrollViewer.ChangeView(null, offset, null, true);
+                    return;
+                }
+
+                scrollViewer.DispatcherQueue.TryEnqueue(
+                    DispatcherQueuePriority.Low,
+                    () => RestoreOffsetDeferred(scrollViewer, offset, attempt + 1));
+            }
+            catch (Exception ex) when (ex.HResult == unchecked((int)0x80000013))
+            {
+                // UI がすでに破棄されている場合は復元を中止する
+            }
         }
     }
 }

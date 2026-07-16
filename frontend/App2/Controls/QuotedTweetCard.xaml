@@ -32,6 +32,7 @@
                 Visibility="{Binding QuotedTweet.IsUnavailable, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                 UserName="{Binding QuotedTweet.UserName}"
                 UserScreenName="{Binding QuotedTweet.UserScreenName}"
+                IsUserProtected="{Binding QuotedTweet.IsUserProtected}"
                 CreatedAtAbsoluteDisplay="{Binding QuotedTweet.CreatedAtAbsoluteDisplay}"
                 CreatedAtRelativeDisplay="{Binding QuotedTweet.CreatedAtRelativeDisplay}"
                 UserProfileImage="{Binding QuotedTweet.UserProfileImage}"/>
@@ -44,21 +45,20 @@
 
             <ItemsControl ItemsSource="{Binding QuotedCardMediaItems}"
                           Visibility="{Binding QuotedCardHasMedia, Converter={StaticResource BoolToVisibilityConverter}}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="8"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="local:MediaItem">
-                        <Border CornerRadius="8"
-                                Background="#1A1A1A"
-                                Margin="0,4"
-                                MaxWidth="280"
-                                HorizontalAlignment="Left">
-                            <Grid HorizontalAlignment="Left"
-                                  MinWidth="120"
-                                  MinHeight="80">
+                        <Border CornerRadius="8" Background="#1A1A1A" Margin="0,4" MaxWidth="320">
+                            <Grid>
                                 <Image Source="{x:Bind ThumbnailImage, Mode=OneTime}"
                                        Tag="{x:Bind Url, Mode=OneTime}"
                                        Stretch="Uniform"
-                                       MaxHeight="160"
-                                       HorizontalAlignment="Left"
+                                       MaxHeight="260"
+                                       HorizontalAlignment="Center"
                                        Tapped="MediaThumbnail_Tapped"/>
                                 <Border Background="#80000000"
                                         CornerRadius="32"

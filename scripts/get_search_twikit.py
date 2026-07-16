@@ -1,11 +1,11 @@
-from typing import Dict, List
+from twikit_client import client, login
+from typing import List, Dict
 
 from tweet_serializer import tweet_to_dict
-from twikit_client import client, login
 
 last_search_cursor = None
 current_query = None
-seen_search_tweets = set()
+seen_search_tweets = set()   # ← グローバルで永続的に重複防止
 
 
 async def search_tweets(
@@ -13,7 +13,7 @@ async def search_tweets(
 ) -> List[Dict]:
     global last_search_cursor, current_query, seen_search_tweets
 
-    await login()
+    login()
 
     results: List[Dict] = []
 
@@ -21,7 +21,7 @@ async def search_tweets(
         if current_query != query:
             last_search_cursor = None
             current_query = query
-            seen_search_tweets.clear()
+            seen_search_tweets.clear()   # 新しいクエリではリセット
             print(f"新しい検索クエリ: {query} → seenクリア")
 
         print(f"検索取得中... query='{query}' cursor={'あり' if cursor or last_search_cursor else 'なし'}")
@@ -42,8 +42,10 @@ async def search_tweets(
             if t.id in seen_search_tweets:
                 continue
             seen_search_tweets.add(t.id)
+
             results.append(tweet_to_dict(t))
 
+        # カーソル更新
         if hasattr(search_result, "next_cursor") and search_result.next_cursor:
             last_search_cursor = search_result.next_cursor
             print(f"next_cursor 更新: {last_search_cursor[:50]}...")

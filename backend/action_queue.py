@@ -8,7 +8,7 @@ import twikit_client
 
 logger = logging.getLogger(__name__)
 
-ActionType = Literal["like", "unlike", "retweet", "reply"]
+ActionType = Literal["like", "unlike", "retweet", "reply", "quote"]
 
 
 @dataclass
@@ -62,6 +62,13 @@ class ActionQueue:
             case "reply":
                 await gtt.client.create_tweet(text=job.text or "", reply_to=job.tweet_id)
                 logger.info("Queued reply completed: tweet_id=%s", job.tweet_id)
+            case "quote":
+                attachment_url = f"https://x.com/i/status/{job.tweet_id}"
+                await gtt.client.create_tweet(
+                    text=job.text or "",
+                    attachment_url=attachment_url,
+                )
+                logger.info("Queued quote completed: tweet_id=%s", job.tweet_id)
 
 
 action_queue = ActionQueue()
