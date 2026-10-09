@@ -70,6 +70,19 @@
         <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     </PropertyGroup>
 
+    <!--
+      単一 exe のリネーム対策。
+      パッケージ化していない WinUI 3 アプリは、起動時に XAML のリソース索引を「<exe 名>.pri」から探し、
+      無ければ resources.pri にフォールバックする。release ワークフローは exe を WinUI3Twikit-<タグ>-win-x64.exe に
+      リネームして配布する（利用者が exe を改名することもある）ため、アプリの .pri を resources.pri としても同梱する。
+      これが無いと、リネームした exe は起動直後に Microsoft.UI.Xaml.dll 内で 0xc000027b で落ちる。
+    -->
+    <Target Name="AddResourcesPriToPublish" AfterTargets="ComputeResolvedFilesToPublishList" Condition="'$(WindowsPackageType)' == 'None'">
+        <ItemGroup Condition="Exists('$(OutDir)$(TargetName).pri')">
+            <ResolvedFileToPublish Include="$(OutDir)$(TargetName).pri" RelativePath="resources.pri" CopyToPublishDirectory="PreserveNewest" />
+        </ItemGroup>
+    </Target>
+
     <PropertyGroup Label="Globals">
       <WebView2DispatchAdapterNamespace>WinUI 3  Twitter</WebView2DispatchAdapterNamespace>
     </PropertyGroup>
