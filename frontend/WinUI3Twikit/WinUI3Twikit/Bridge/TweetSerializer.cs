@@ -132,8 +132,108 @@ namespace WinUI3Twikit.Bridge
         private static string DisplayText(Tweet tweet)
         {
             var text = tweet.FullText;
-            return string.IsNullOrEmpty(text) ? tweet.Text : text;
+            if (string.IsNullOrEmpty(text))
+            {
+                text = tweet.Text;
+            }
+
+            // X は添付メディア用の t.co を本文末尾へ足す。サムネイル側で見せるので本文からは除く。
+            return StripTrailingMediaUrls(text, tweet.Legacy);
         }
+
+        /// <summary>
+        /// 本文末尾に並ぶ t.co のうち、メディアエンティティの短縮 URL だけを除く。
+        /// 引用や本文中のリンクは残す。メディア用 URL が無ければ本文は変えない。
+        /// </summary>
+        internal static string StripTrailingMediaUrls(string? text, JsonObject tweet)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return text ?? string.Empty;
+            }
+
+            var mediaUrls = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var shortUrl in MediaShortUrls(tweet))
+            {
+                if (!string.IsNullOrEmpty(shortUrl))
+                {
+                    mediaUrls.Add(shortUrl);
+                }
+            }
+
+            if (mediaUrls.Count == 0)
+            {
+                return text;
+            }
+
+            var end = text.TrimEnd();
+            var kept = new List<string>();
+            var removed = false;
+            var index = end.Length;
+            while (index > 0)
+            {
+                var tokenEnd = index;
+                while (index > 0 && !char.IsWhiteSpace(end[index - 1]))
+                {
+                    index--;
+                }
+
+                if (index == tokenEnd)
+                {
+                    break;
+                }
+
+                var token = end[index..tokenEnd];
+                if (mediaUrls.Contains(token))
+                {
+                    removed = true;
+                }
+                else if (IsTcoUrl(token))
+                {
+                    // 引用用など、メディアではない末尾の t.co は残して、その手前も見る。
+                    kept.Add(token);
+                }
+                else
+                {
+                    index = tokenEnd;
+                    break;
+                }
+
+                while (index > 0 && char.IsWhiteSpace(end[index - 1]))
+                {
+                    index--;
+                }
+            }
+
+            if (!removed)
+            {
+                return text;
+            }
+
+            var head = end[..index].TrimEnd();
+            if (kept.Count == 0)
+            {
+                return head;
+            }
+
+            kept.Reverse();
+            return head.Length == 0 ? string.Join(" ", kept) : head + " " + string.Join(" ", kept);
+        }
+
+        private static IEnumerable<string?> MediaShortUrls(JsonObject tweet)
+        {
+            // entities.media は先頭の 1 件だけなので、extended_entities を優先する。
+            var extended = tweet.Sub("extended_entities").ArrOrEmpty("media");
+            var media = extended.Count > 0 ? extended : tweet.Sub("entities").ArrOrEmpty("media");
+            foreach (var item in media.Objects())
+            {
+                yield return item.Str("url");
+            }
+        }
+
+        private static bool IsTcoUrl(string token)
+            => token.StartsWith("https://t.co/", StringComparison.OrdinalIgnoreCase)
+               || token.StartsWith("http://t.co/", StringComparison.OrdinalIgnoreCase);
 
         public static JsonObject QuoteToDict(Tweet quoted)
         {

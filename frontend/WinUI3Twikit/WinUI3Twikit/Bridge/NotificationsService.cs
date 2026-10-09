@@ -444,7 +444,7 @@ namespace WinUI3Twikit.Bridge
                     ["type"] = AggregateType(notification),
                     ["text"] = TweetSerializer.NormalizeText(notification.Sub("message").Str("text") ?? string.Empty),
                     ["created_at"] = FormatTimestampMs(timestampMs),
-                    ["target_tweet_text"] = TweetSerializer.NormalizeText(TweetText(target)),
+                    ["target_tweet_text"] = StripMediaUrls(TweetSerializer.NormalizeText(TweetText(target)), target),
                 };
                 AddActor(item, users, userId);
                 extracted.Add((timestampMs, item));
@@ -549,32 +549,7 @@ namespace WinUI3Twikit.Bridge
         }
 
         private static string StripMediaUrls(string text, JsonObject tweet)
-        {
-            if (string.IsNullOrEmpty(text))
-            {
-                return text;
-            }
-
-            foreach (var m in tweet.Sub("extended_entities").ArrOrEmpty("media").Objects())
-            {
-                var mediaUrl = m.Str("url");
-                if (!string.IsNullOrEmpty(mediaUrl))
-                {
-                    text = text.Replace(mediaUrl, string.Empty);
-                }
-            }
-
-            foreach (var m in tweet.Sub("entities").ArrOrEmpty("media").Objects())
-            {
-                var mediaUrl = m.Str("url");
-                if (!string.IsNullOrEmpty(mediaUrl))
-                {
-                    text = text.Replace(mediaUrl, string.Empty);
-                }
-            }
-
-            return text.Trim();
-        }
+            => TweetSerializer.StripTrailingMediaUrls(text, tweet).Trim();
 
         private static void AddTweetCard(
             List<(long TimestampMs, JsonObject Item)> extracted,
